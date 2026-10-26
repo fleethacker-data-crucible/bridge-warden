@@ -1,5 +1,5 @@
 // Where the app's files live. Start-BridgeWarden.ps1 sets Paths.Root to the app folder before anything else runs.
-// Config, scenarios, skills and fixtures are shared with the Python backend while the port is in progress.
+// Config, scenarios, skills and fixtures live under backend\ (the folder name is historical; it holds data only).
 using System.IO;
 
 namespace BridgeWarden

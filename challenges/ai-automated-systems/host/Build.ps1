@@ -50,7 +50,7 @@ function Test-BwSourceRules {
     }
     if ($AppRoot) {
         $bins = @(Get-ChildItem $AppRoot -Recurse -File -Include *.dll, *.exe -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -notmatch '\\(\.venv|temp|\.git)\\' })
+            Where-Object { $_.FullName -notmatch '\\(temp|\.git)\\' })
         foreach ($b in $bins) { $fail.Add("Binary in app folder: $($b.FullName)") }
     }
     return $fail
