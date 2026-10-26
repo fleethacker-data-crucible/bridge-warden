@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bridge-warden",
+      "runtimeExecutable": "C:/Users/christopher.staggs/.local/bin/uv.exe",
+      "runtimeArgs": ["run", "--project", "D:/cdao-maximus/challenges/ai-automated-systems/backend", "--directory", "D:/cdao-maximus/challenges/ai-automated-systems/backend", "uvicorn", "warden.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "port": 8000
+    }
+  ]
+}

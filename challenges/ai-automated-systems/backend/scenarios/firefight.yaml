@@ -1,0 +1,16 @@
+# Auto firefight (real time, 1x), about 6 minutes. Two unknown tracks close in, are classified,
+# and launch. Everything the ship does about it is decided by the LLM agents and approved (or not) by the watch.
+name: firefight
+events:
+  - t: 0
+    phase: Firefight
+  - t: 1
+    hostile: { bearing: 40, range_nm: 14.5, speed: 32 }
+  - t: 40
+    hostile: { bearing: -35, range_nm: 15.5, speed: 30 }
+  - t: 120
+    inbound: { count: 2 }
+  - t: 240
+    inbound: { count: 2 }
+  - t: 330
+    phase: "Firefight: damage control & recovery"

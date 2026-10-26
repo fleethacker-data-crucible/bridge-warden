@@ -1,0 +1,680 @@
+{
+ "scenario": "S23",
+ "title": "Four missiles, two SM-2 left",
+ "round": "r3",
+ "doctrine": "Spend 1 round each on the two closest, soft-kill everything, evasive at flank, GQ. Accept risk on the rest.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 151.1,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "on time",
+   "reaction_s": 9.6,
+   "deadline_s": 25,
+   "agent": "def-01",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "model_latency_s": 8.2
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "on time",
+   "reaction_s": 9.6,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "model_latency_s": 8.2
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 9.6,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 8.2
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "MISSED",
+   "deadline_s": 60
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 26,
+ "latency_s": {
+  "mean": 5.8,
+  "max": 11.9,
+  "min": 1.5
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 43,
+  "executed": 9
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 22,
+  "SYSTEM_STATE": 20,
+  "OTHER": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 39,
+ "intents_total": 52,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 24,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 8.0,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 8.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 8.0,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 105.0
+   },
+   "status": "rejected",
+   "why_blocked": "Evasive maneuvering needs an inbound missile or torpedo on the COP"
+  },
+  {
+   "at": 8.0,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "rejected",
+   "why_blocked": "Evasive maneuvering needs an inbound missile or torpedo on the COP"
+  },
+  {
+   "at": 18.7,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 18.7,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 18.7,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 34.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V1 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 34.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 34.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 34.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 38.0,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 45.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V2 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 45.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V3 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 45.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V4 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 50.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 50.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 50.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 50.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 59.4,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 59.4,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 59.4,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 215.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 69.2,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 69.2,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 69.2,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 81.6,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 81.6,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 81.6,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 81.6,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 95.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 95.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 95.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 95.3,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 98.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 107.4,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V2 on the COP"
+  },
+  {
+   "at": 107.4,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 107.4,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V4 on the COP"
+  },
+  {
+   "at": 107.4,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 112.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 120.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 120.1,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 120.1,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 130.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 128.7,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 128.7,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 138.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 138.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 145.9,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Rounds must be 1-2 and within magazine (0)"
+  },
+  {
+   "at": 145.9,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 150.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 150.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 150.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 150.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  }
+ ]
+}

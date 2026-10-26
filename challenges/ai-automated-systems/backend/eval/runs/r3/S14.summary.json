@@ -1,0 +1,426 @@
+{
+ "scenario": "S14",
+ "title": "Flooding aft (steering gear room)",
+ "round": "r3",
+ "doctrine": "Flying Squad / Repair 3 to STEER, GQ. Steering lost: no rudder orders until restored.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 207.0,
+ "expectations": [
+  {
+   "expect": "Repair party to STEER",
+   "result": "on time",
+   "reaction_s": 23.7,
+   "deadline_s": 30,
+   "agent": "dca-01",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "STEER",
+    "boundaries": [
+     440,
+     505
+    ]
+   },
+   "model_latency_s": 5.1
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 11.6,
+   "deadline_s": 45,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 3.2
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 64,
+ "latency_s": {
+  "mean": 3.2,
+  "max": 8.3,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 16,
+  "rejected": 19
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 13,
+  "OTHER": 4,
+  "ACTION_LIMIT": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 30,
+ "intents_total": 35,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 13.6,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 20.6,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 25.7,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 25.7,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "STEER"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 35.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 40.3,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 44.7,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 44.7,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 55.5,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 55.5,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 151.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 61\u00b0 exceeds limit 45\u00b0"
+  },
+  {
+   "at": 55.5,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 235.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 145\u00b0 exceeds limit 45\u00b0"
+  },
+  {
+   "at": 60.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 62.9,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No SUSPECT or HOSTILE track on the COP"
+  },
+  {
+   "at": 75.5,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 89.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 89.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 91.8,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No SUSPECT or HOSTILE track on the COP"
+  },
+  {
+   "at": 99.6,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 103.7,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 116.6,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 115.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 116.6,
+   "agent": "col-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 8.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 122.5,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-2L2"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 122.5,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-2L1"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 125.4,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No SUSPECT or HOSTILE track on the COP"
+  },
+  {
+   "at": 137.9,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 151.3,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T23"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 154.3,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No SUSPECT or HOSTILE track on the COP"
+  },
+  {
+   "at": 162.5,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 166.7,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 179.7,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 179.7,
+   "agent": "col-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 8.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 183.6,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-1L3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 186.4,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No SUSPECT or HOSTILE track on the COP"
+  },
+  {
+   "at": 194.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 200.3,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  }
+ ]
+}

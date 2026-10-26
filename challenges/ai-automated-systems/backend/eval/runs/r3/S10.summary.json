@@ -1,0 +1,397 @@
+{
+ "scenario": "S10",
+ "title": "Squall line ahead to starboard",
+ "round": "r3",
+ "doctrine": "Turn to PORT ~35 deg (away from the cells), confirm clearance. Never into a cell.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 150.0,
+ "expectations": [
+  {
+   "expect": "Turn away from the cells",
+   "result": "on time",
+   "reaction_s": 56.7,
+   "deadline_s": 90,
+   "agent": "wx-01",
+   "params": {
+    "heading": 65.0
+   },
+   "model_latency_s": 6.6
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 40,
+ "latency_s": {
+  "mean": 3.7,
+  "max": 7.8,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 25,
+  "executed": 7
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 23,
+  "OTHER": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 23,
+ "intents_total": 32,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": false,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 6.0,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 6.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 14.9,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 19.2,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 19.2,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 27.3,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 32.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 37.9,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 37.9,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 48.3,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 115.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 48.3,
+   "agent": "col-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 8.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 56.8,
+   "agent": "wx-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 65.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 62.7,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 62.7,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 66.0,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 70.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 70.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 70.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 70.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 75.0,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 82.0,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 95.7,
+   "agent": "wx-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 65.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 101.3,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 101.3,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 111.8,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 125.3,
+   "agent": "wx-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 30.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 128.4,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 132.6,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 132.6,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 138.3,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 138.3,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 145.7,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

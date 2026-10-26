@@ -1,0 +1,432 @@
+{
+ "scenario": "S02",
+ "title": "Saturation raid: 4 missiles, two bearings",
+ "round": "r3",
+ "doctrine": "Same as S01 but prioritize the closest inbound first, 2 rounds each while magazine allows, all soft-kill up.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 97.1,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "on time",
+   "reaction_s": 10.5,
+   "deadline_s": 25,
+   "agent": "def-01",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "model_latency_s": 9.5
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "on time",
+   "reaction_s": 10.5,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "systems": [
+     "ADS",
+     "CIWS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "model_latency_s": 9.5
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 10.5,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 9.5
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "MISSED",
+   "deadline_s": 60
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 13,
+ "latency_s": {
+  "mean": 7.4,
+  "max": 14.2,
+  "min": 1.5
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 23,
+  "executed": 8
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 10,
+  "SYSTEM_STATE": 12,
+  "RATE_QUOTA": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 27,
+ "intents_total": 31,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 8,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 7.6,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 7.6,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 19.5,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 19.5,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CIWS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 19.5,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 19.5,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 45.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 37.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V1 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 37.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 37.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 37.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 40.2,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 51.4,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V2 already has SM-2 in flight"
+  },
+  {
+   "at": 51.4,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V3 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 51.4,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 51.4,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 345.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 56.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 56.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 56.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 56.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 65.8,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V4 already has SM-2 in flight"
+  },
+  {
+   "at": 65.8,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 65.8,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 65.8,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 345.0
+   },
+   "status": "rejected",
+   "why_blocked": "Rate 9/min exceeds quota 8/min"
+  },
+  {
+   "at": 81.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V1 already has SM-2 in flight"
+  },
+  {
+   "at": 81.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V2 already has SM-2 in flight"
+  },
+  {
+   "at": 81.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V3 already has SM-2 in flight"
+  },
+  {
+   "at": 81.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V4 already has SM-2 in flight"
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V1 on the COP"
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V2 on the COP"
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V3 on the COP"
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V4",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V4 on the COP"
+  }
+ ]
+}

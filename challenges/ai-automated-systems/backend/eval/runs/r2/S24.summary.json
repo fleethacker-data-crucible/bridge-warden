@@ -1,0 +1,130 @@
+{
+ "scenario": "S24",
+ "title": "Missile attack in heavy weather",
+ "round": "r2",
+ "doctrine": "Evasive course must not run into the squall (Warden blocks); defend with SM-2 + soft kill.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 101.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "MISSED",
+   "deadline_s": 25
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "on time",
+   "reaction_s": 27.5,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "systems": [
+     "ADS",
+     "CIWS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "model_latency_s": 6.3
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 1.5,
+   "deadline_s": 40,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 3.9
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 15,
+ "latency_s": {
+  "mean": 3.7,
+  "max": 6.3,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 3,
+  "rejected": 2
+ },
+ "blocked_by_warden": {
+  "OTHER": 1,
+  "NOT_WARRANTED": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 5,
+ "intents_total": 5,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [
+  ""
+ ],
+ "actions_timeline": [
+  {
+   "at": 13.5,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 27.0,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 33.1,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 39.5,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 39.5,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CIWS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

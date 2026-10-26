@@ -1,0 +1,448 @@
+{
+ "scenario": "S11",
+ "title": "Main engine overheating",
+ "round": "r3",
+ "doctrine": "Slow to 10 kn once temperature passes 95 C (protect the engine, keep propulsion). No GQ.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 200.0,
+ "expectations": [
+  {
+   "expect": "Slow to ~10 kn",
+   "result": "on time",
+   "reaction_s": 37.1,
+   "deadline_s": 45,
+   "agent": "eng-01",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "model_latency_s": 3.3
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 64,
+ "latency_s": {
+  "mean": 3.1,
+  "max": 8.4,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 32,
+  "executed": 7
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 22,
+  "OTHER": 8,
+  "ACTION_LIMIT": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 26,
+ "intents_total": 39,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": false,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 5.4,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 5.4,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 14.2,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 19.4,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 19.4,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 19.4,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 19.4,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 27.2,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 33.6,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 46.9,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 46.9,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 150.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 60\u00b0 exceeds limit 45\u00b0"
+  },
+  {
+   "at": 46.9,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 150.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 60\u00b0 exceeds limit 45\u00b0"
+  },
+  {
+   "at": 54.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 60.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 65.9,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 70.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 70.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 70.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 70.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 88.5,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 103.1,
+   "agent": "eng-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 112.0,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  },
+  {
+   "at": 125.6,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 125.6,
+   "agent": "col-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 8.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 128.8,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 133.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 133.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 137.9,
+   "agent": "eng-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 142.9,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  },
+  {
+   "at": 148.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  },
+  {
+   "at": 162.0,
+   "agent": "eng-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 166.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  },
+  {
+   "at": 171.4,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  },
+  {
+   "at": 182.7,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No SUSPECT or HOSTILE track on the COP"
+  },
+  {
+   "at": 185.8,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 189.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 189.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 193.7,
+   "agent": "eng-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 198.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  }
+ ]
+}

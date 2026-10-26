@@ -1,0 +1,180 @@
+{
+ "scenario": "S23",
+ "title": "Four missiles, two SM-2 left",
+ "round": "r1",
+ "doctrine": "Spend 1 round each on the two closest, soft-kill everything, evasive at flank, GQ. Accept risk on the rest.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 141.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "LATE",
+   "reaction_s": 121.1,
+   "deadline_s": 25,
+   "agent": "def-01",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "model_latency_s": 17.4
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "on time",
+   "reaction_s": 13.2,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "model_latency_s": 10.6
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 13.2,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 10.6
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "on time",
+   "reaction_s": 13.2,
+   "deadline_s": 60,
+   "agent": "def-01",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "model_latency_s": 10.6
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 9,
+ "latency_s": {
+  "mean": 5.3,
+  "max": 17.4,
+  "min": 1.7
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 7,
+  "rejected": 1
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 7,
+ "intents_total": 8,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 24,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [
+  "reply was not JSON"
+ ],
+ "actions_timeline": [
+  {
+   "at": 22.2,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 22.2,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 22.2,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 130.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 22.2,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 130.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V3",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 130.1,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Nixie is for torpedoes: no torpedo or submarine on the COP"
+  },
+  {
+   "at": 130.1,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 175.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 130.1,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

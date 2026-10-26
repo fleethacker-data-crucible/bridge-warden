@@ -1,0 +1,366 @@
+{
+ "scenario": "S06",
+ "title": "Torpedo from dead ahead (we are steaming at it)",
+ "round": "r1",
+ "doctrine": "Reverse course: torpedo bearing + 180, flank. Nixie. ASROC on the HOSTILE sub.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 330.0,
+ "expectations": [
+  {
+   "expect": "Turn away from torpedo",
+   "result": "MISSED",
+   "deadline_s": 40
+  },
+  {
+   "expect": "Flank speed",
+   "result": "on time",
+   "reaction_s": 24.2,
+   "deadline_s": 40,
+   "agent": "asw-01",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "model_latency_s": 22.3
+  },
+  {
+   "expect": "Stream Nixie",
+   "result": "LATE",
+   "reaction_s": 76.2,
+   "deadline_s": 45,
+   "agent": "asw-01",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "model_latency_s": 22.3
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 36,
+ "latency_s": {
+  "mean": 5.7,
+  "max": 23.3,
+  "min": 1.6
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 7,
+  "rejected": 21
+ },
+ "blocked_by_warden": {
+  "OTHER": 4,
+  "NOT_WARRANTED": 14,
+  "ACTION_LIMIT": 3
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 26,
+ "intents_total": 28,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 27.3,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 33.9,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 51.8,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 51.8,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 60.2,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 60.2,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 74.3,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 74.3,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 81.5,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 86.8,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 109.2,
+   "agent": "asw-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 270.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 180\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 109.2,
+   "agent": "asw-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 109.2,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 109.2,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 165.7,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 165.7,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 165.7,
+   "agent": "asw-01",
+   "action": "engage_target",
+   "params": {
+    "target": "TN4004",
+    "rounds": 1
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 231.6,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "Cites TN4004, which is not on the COP"
+  },
+  {
+   "at": 296.9,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 296.9,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 296.9,
+   "agent": "asw-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 279.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 171\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 296.9,
+   "agent": "asw-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 300.7,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by asw-01 (priority 94)"
+  },
+  {
+   "at": 319.2,
+   "agent": "asw-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 270.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 180\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 319.2,
+   "agent": "asw-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "rejected",
+   "why_blocked": "Cites TN4004, which is not on the COP"
+  },
+  {
+   "at": 319.2,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 319.2,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 324.4,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by asw-01 (priority 94)"
+  }
+ ]
+}

@@ -1,0 +1,109 @@
+{
+ "scenario": "S15",
+ "title": "Fire in CIC at General Quarters",
+ "round": "r1",
+ "doctrine": "All lockers manned: Repair 8 (electronics) or Repair 2, whichever is closer, to CIC immediately.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 119.0,
+ "expectations": [
+  {
+   "expect": "Repair 8/2 to CIC",
+   "result": "LATE",
+   "reaction_s": 41.0,
+   "deadline_s": 30,
+   "agent": "dca-01",
+   "params": {
+    "team": "R8",
+    "casualty": "CAS-1",
+    "compartment": "CIC",
+    "boundaries": [
+     130,
+     200
+    ]
+   },
+   "model_latency_s": 7.7
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 24,
+ "latency_s": {
+  "mean": 4.4,
+  "max": 21.5,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 4,
+  "rejected": 1
+ },
+ "blocked_by_warden": {
+  "OTHER": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 5,
+ "intents_total": 5,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 35.2,
+   "agent": "pwr-01",
+   "action": "open_breaker",
+   "params": {
+    "breaker": "B-T23"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 43.0,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "R8",
+    "casualty": "CAS-1",
+    "compartment": "CIC"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 54.7,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 99.7,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 108.0,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  }
+ ]
+}

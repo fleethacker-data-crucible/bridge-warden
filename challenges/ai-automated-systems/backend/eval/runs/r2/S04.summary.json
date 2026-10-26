@@ -1,0 +1,230 @@
+{
+ "scenario": "S04",
+ "title": "Two surface hostiles (scripted firefight)",
+ "round": "r2",
+ "doctrine": "Engage both shooters with Harpoon as soon as each is HOSTILE; defend against any salvo with SM-2 + soft kill.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 300.0,
+ "expectations": [
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 36.6,
+   "deadline_s": 60,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 4.7
+  },
+  {
+   "expect": "Harpoon return fire at HOSTILE",
+   "result": "on time",
+   "reaction_s": 26.6,
+   "deadline_s": 45,
+   "agent": "def-01",
+   "params": {
+    "target": "TN4004",
+    "rounds": 1
+   },
+   "model_latency_s": 5.9
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 57,
+ "latency_s": {
+  "mean": 4.3,
+  "max": 21.1,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 8,
+  "rejected": 8
+ },
+ "blocked_by_warden": {
+  "OTHER": 3,
+  "NOT_WARRANTED": 4,
+  "SYSTEM_STATE": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 14,
+ "intents_total": 16,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 1,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [
+  "reply was not JSON"
+ ],
+ "actions_timeline": [
+  {
+   "at": 28.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 33.8,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 38.6,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 76.3,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 82.8,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 87.8,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 128.2,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 134.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 141.7,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 153.6,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "TN4004",
+    "rounds": 1
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 184.9,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 220.6,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 241.3,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 271.7,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "TN4005",
+    "rounds": 1
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 279.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "TN4005",
+    "rounds": 1
+   },
+   "status": "rejected",
+   "why_blocked": "TN4005 already has a HARPOON in flight"
+  },
+  {
+   "at": 286.8,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  }
+ ]
+}

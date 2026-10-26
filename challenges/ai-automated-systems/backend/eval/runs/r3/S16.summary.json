@@ -1,0 +1,319 @@
+{
+ "scenario": "S16",
+ "title": "Fire forward and flooding aft together",
+ "round": "r3",
+ "doctrine": "Two teams, two casualties: closest standby team to each; fight-critical space first.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 150.0,
+ "expectations": [
+  {
+   "expect": "Team to the first casualty",
+   "result": "on time",
+   "reaction_s": 19.6,
+   "deadline_s": 30,
+   "agent": "dca-01",
+   "params": {
+    "team": "R2",
+    "casualty": "CAS-1",
+    "compartment": "VLSF",
+    "boundaries": [
+     60,
+     130
+    ]
+   },
+   "model_latency_s": 6.1
+  },
+  {
+   "expect": "Team to the second casualty",
+   "result": "on time",
+   "reaction_s": 17.6,
+   "deadline_s": 60,
+   "agent": "dca-01",
+   "params": {
+    "team": "R2",
+    "casualty": "CAS-1",
+    "compartment": "VLSF",
+    "boundaries": [
+     60,
+     130
+    ]
+   },
+   "model_latency_s": 6.1
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 47,
+ "latency_s": {
+  "mean": 3.2,
+  "max": 8.4,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 17,
+  "executed": 6
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 10,
+  "SYSTEM_STATE": 2,
+  "OTHER": 3,
+  "ACTION_LIMIT": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 20,
+ "intents_total": 23,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 15.5,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 21.6,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "R2",
+    "casualty": "CAS-1",
+    "compartment": "VLSF"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 21.6,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-2",
+    "compartment": "AMR2"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 29.5,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "R8",
+    "casualty": "CAS-1",
+    "compartment": "VLSF"
+   },
+   "status": "rejected",
+   "why_blocked": "CAS-1 already has Repair 2 (Fwd) assigned"
+  },
+  {
+   "at": 29.5,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "R5",
+    "casualty": "CAS-2",
+    "compartment": "AMR2"
+   },
+   "status": "rejected",
+   "why_blocked": "CAS-2 already has Flying Squad (Duty) assigned"
+  },
+  {
+   "at": 35.7,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 40.5,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 44.8,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 44.8,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 55.6,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 55.6,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 151.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 61\u00b0 exceeds limit 45\u00b0"
+  },
+  {
+   "at": 55.6,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 155.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 65\u00b0 exceeds limit 45\u00b0"
+  },
+  {
+   "at": 60.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 74.7,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 88.1,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 91.1,
+   "agent": "ew-01",
+   "action": "set_emcon",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No SUSPECT or HOSTILE track on the COP"
+  },
+  {
+   "at": 98.9,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 103.0,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 115.8,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 115.8,
+   "agent": "col-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 8.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 119.5,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T12"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 129.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 135.8,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  }
+ ]
+}

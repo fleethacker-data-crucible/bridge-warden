@@ -2,8 +2,15 @@
 **/secrets.json
 **/.env
 **/.env.*
+!**/.env.example
 
 # Build / runtime output
 bin/
 node_modules/
 dist/
+
+# Runtime data
+**/backend/data/
+**/.venv/
+__pycache__/
+.pytest_cache/

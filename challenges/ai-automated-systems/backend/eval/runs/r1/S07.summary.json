@@ -1,0 +1,359 @@
+{
+ "scenario": "S07",
+ "title": "Missiles and torpedoes at the same time",
+ "round": "r1",
+ "doctrine": "Missiles first (seconds) then torpedo (minutes): SM-2 + soft kill + GQ now; course choice that both opens from the torpedo and keeps missiles off the bow; Nixie.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 330.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "LATE",
+   "reaction_s": 76.0,
+   "deadline_s": 25,
+   "agent": "def-01",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "model_latency_s": 24.0
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "on time",
+   "reaction_s": 16.9,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "model_latency_s": 12.1
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 16.9,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 12.1
+  },
+  {
+   "expect": "Stream Nixie",
+   "result": "on time",
+   "reaction_s": 22.5,
+   "deadline_s": 45,
+   "agent": "asw-01",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "model_latency_s": 9.5
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 24,
+ "latency_s": {
+  "mean": 7.3,
+  "max": 24.0,
+  "min": 1.5
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 11,
+  "rejected": 13
+ },
+ "blocked_by_warden": {
+  "ACTION_LIMIT": 4,
+  "NOT_WARRANTED": 9
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 22,
+ "intents_total": 24,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 4,
+  "casualties_open": 0,
+  "hostiles_left": 1,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [
+  "reply was not JSON",
+  "reply was not JSON"
+ ],
+ "actions_timeline": [
+  {
+   "at": 35.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 35.4,
+   "agent": "nav-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 90.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 63.9,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 63.9,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 185.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 95\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 63.9,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 63.9,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 73.5,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 73.5,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 185.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 95\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 96.1,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 123.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 123.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 123.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 123.0,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 182.5,
+   "agent": "asw-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 228.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 138\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 182.5,
+   "agent": "asw-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 182.5,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 182.5,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 315.4,
+   "agent": "asw-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 228.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 138\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 315.4,
+   "agent": "asw-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 315.4,
+   "agent": "asw-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 315.4,
+   "agent": "asw-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  }
+ ]
+}

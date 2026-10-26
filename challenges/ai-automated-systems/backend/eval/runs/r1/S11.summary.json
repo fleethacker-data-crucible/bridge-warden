@@ -1,0 +1,172 @@
+{
+ "scenario": "S11",
+ "title": "Main engine overheating",
+ "round": "r1",
+ "doctrine": "Slow to 10 kn once temperature passes 95 C (protect the engine, keep propulsion). No GQ.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 200.0,
+ "expectations": [
+  {
+   "expect": "Slow to ~10 kn",
+   "result": "LATE",
+   "reaction_s": 45.2,
+   "deadline_s": 45,
+   "agent": "eng-01",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "model_latency_s": 5.8
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 60,
+ "latency_s": {
+  "mean": 3.2,
+  "max": 11.2,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 6,
+  "rejected": 6
+ },
+ "blocked_by_warden": {
+  "OTHER": 5,
+  "NOT_WARRANTED": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 12,
+ "intents_total": 12,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": false,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 24.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.1,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 52.1,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 58.0,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 82.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 91.9,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 110.2,
+   "agent": "eng-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 115.6,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  },
+  {
+   "at": 142.6,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "rejected",
+   "why_blocked": "No contact with CPA under 1 nm on the COP"
+  },
+  {
+   "at": 149.1,
+   "agent": "eng-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 10.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 154.7,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by eng-01 (priority 70)"
+  },
+  {
+   "at": 177.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

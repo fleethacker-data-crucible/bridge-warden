@@ -1,0 +1,154 @@
+// Warden Control window: status, SAFE-STOP, scenario actions, edge budget, live log.
+
+const $ = (id) => document.getElementById(id);
+let paused = false;   // log auto-scroll pauses on hover
+
+function render(s, newLogs) {
+    if (!s) return;
+    const sum = s.summary;
+    const ai = s.server.llm;
+    $('sub').textContent = `${BW.connected ? 'Connected' : 'Disconnected'} · profile ${s.server.profile} · scenario ${s.scenario.name} · AI text: ${ai.mode}${ai.mode === 'live' ? ` (${ai.provider}/${ai.model})` : ''}`;
+    $('k-agents').textContent = `${sum.agents_active}/${sum.agents_total}`;
+    $('k-ipm').textContent = sum.intents_per_min;
+    $('k-exec').textContent = sum.executed;
+    $('k-rej').textContent = sum.rejected;
+    $('k-esc').textContent = sum.escalations_open;
+    $('operator').textContent = s.server.operator;
+    $('uptime').textContent = fmtDur(s.server.uptime_s);
+    $('simtime').textContent = fmtSim(s.cop.sim_time);
+    $('phase').textContent = s.cop.phase;
+
+    const core = $('core');
+    core.textContent = !BW.connected ? 'Offline' : sum.safe_stop ? 'Safe-Stop' : !s.server.running ? 'Paused' : 'Online';
+    core.className = 'status-word ' + (!BW.connected || sum.safe_stop ? 'sw-red' : !s.server.running ? 'sw-yellow' : 'sw-green');
+    const scen = $('scen');
+    scen.textContent = s.scenario.running ? (s.scenario.name === 'ops_normal' ? 'Operating' : s.scenario.finished ? 'Complete' : 'Running') : 'Standby';
+    scen.className = 'status-word ' + (s.scenario.running ? 'sw-blue' : 'sw-yellow');
+    const L = s.server.agents_llm, lw = $('llm');
+    lw.textContent = !s.server.running && !L.calls ? 'Standby' : !L.calls ? 'Waiting' : L.last_ok ? 'Online' : 'Offline';
+    lw.className = 'status-word ' + (!L.calls ? 'sw-blue' : L.last_ok ? 'sw-green' : 'sw-red');
+    lw.title = `${s.server.llm.base_url} · ${L.model || s.server.llm.local_model} · ${L.calls} calls · queue ${L.queue}${L.last_error ? ' · ' + L.last_error : ''}`;
+    const sys = s.cop.systems, em = $('emcon');
+    em.textContent = sys.emcon ? 'Set' : 'Off';
+    em.className = 'status-word ' + (sys.emcon ? 'sw-green' : sys.hostiles.length ? 'sw-red' : 'sw-yellow');
+    const gq = s.cop.systems.gq, gb = $('gq');
+    gb.textContent = gq ? 'Secure from GQ' : 'Sound General Quarters';
+    gb.className = 'btn ' + (gq ? '' : 'danger');
+    const pr = s.presenter;
+    $('tscale').textContent = `${pr.time_scale}×`;
+    document.querySelectorAll('#injmode button').forEach(b => b.classList.toggle('on', (b.dataset.mode === 'auto') === pr.auto_inject));
+    $('injinfo').textContent = pr.auto_inject
+        ? `Auto: a random issue every 60–120 s · next in ${pr.next_auto_s} s${pr.last_auto ? ` · last: ${pr.last_auto}` : ''}`
+        : 'Manual: only the presenter injects issues.';
+    const openCheck = s.escalations.find(e => e.kind === 'system_check' && e.status === 'open');
+    const nc = $('nextcheck');
+    nc.textContent = openCheck ? 'WAITING' : sum.next_check_s === null ? 'off' : fmtDur(sum.next_check_s).slice(2);
+    nc.style.color = openCheck || sum.checks_missed ? 'var(--badge-yellow)' : '';
+
+    $('tiles').innerHTML = s.agents.map(a =>
+        `<div class="agent-tile at-${a.status}" title="${esc(a.name)}: ${a.status.toUpperCase()}">${esc(a.id)}</div>`).join('');
+
+    $('banner').classList.toggle('show', sum.safe_stop);
+    const hold = $('hold');
+    hold.classList.toggle('red', !sum.safe_stop);
+    hold.classList.toggle('green', sum.safe_stop);
+    $('hold-cap').textContent = sum.safe_stop ? 'RESUME OPERATIONS' : 'SAFE-STOP';
+
+    const r = s.resources;
+    const tile = (label, val, budget, unit) => {
+        const ok = budget === null || val <= budget;
+        return `<div class="tile"><div class="l">${label}</div><div class="v ${ok ? 'ok' : 'over'}">${val}${unit}</div>
+                <div class="s">${budget === null ? '&nbsp;' : `budget ${budget}${unit}`}</div></div>`;
+    };
+    $('profile').textContent = r.profile.toUpperCase();
+    $('edge').innerHTML = tile('CPU', r.cpu_cores, r.cpu_budget, ' cores') + tile('Memory', r.rss_mb, r.rss_budget, ' MB')
+        + tile('UI Stream', r.ui_kbps, r.ui_budget, ' KB/s') + tile('Max Intent', r.intent_bytes_max, r.intent_budget, ' B')
+        + tile('Pipeline', r.pipeline_ms, null, ' ms') + tile('Off-Ship', r.external_bytes, 0, ' B');
+
+    if (newLogs.length) {
+        const log = $('log');
+        log.insertAdjacentHTML('beforeend', newLogs.map(logLine).join(''));
+        while (log.children.length > 500) log.children[1].remove();
+        if (!paused) $('logpane').scrollTop = $('logpane').scrollHeight;
+    }
+}
+
+// Hold-to-engage button (2 s). Fires SAFE-STOP while running, RESUME while stopped.
+// A plain interval (not requestAnimationFrame), so it still fires if the window isn't focused.
+(function holdButton() {
+    const btn = $('hold'), fill = btn.querySelector('.fill');
+    let start = 0, timer = 0;
+    const stop = () => { clearInterval(timer); timer = 0; fill.style.width = '0'; };
+    const tick = () => {
+        const p = Math.min(1, (performance.now() - start) / 2000);
+        fill.style.width = `${p * 100}%`;
+        if (p >= 1) {
+            stop();
+            const stopped = BW.state?.summary.safe_stop;
+            BW.act('POST', stopped ? '/api/control/resume-all' : '/api/control/safe-stop', null,
+                stopped ? 'Operations resumed' : 'SAFE-STOP engaged');
+        }
+    };
+    btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        if (timer) return;
+        start = performance.now();
+        timer = setInterval(tick, 30);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+})();
+
+document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async () => {
+    const a = b.dataset.act;
+    if (a === 'verify') {
+        const r = await BW.act('GET', '/api/ledger/verify');
+        if (r) BW.toast(r.valid ? `Ledger chain valid (${r.rows} rows)` : `Ledger BROKEN at row ${r.broken_at}`);
+    } else if (a === 'rollback') {
+        const r = await BW.act('POST', '/api/control/rollback', { count: 1 });
+        if (r) BW.toast(r.undone.length ? 'Rolled back last action' : 'Nothing to roll back');
+    } else if (a === 'main') {
+        window.open('/index.html', 'bw-main');
+    } else if (a === 'reset') {
+        if (await confirmDestructive({ title: 'Reset everything', question: 'Reset the scenario, all agents and the audit ledger?',
+                warning: 'The audit ledger and all decisions so far are permanently deleted. This cannot be undone.', action: 'Reset' })) {
+            await BW.act('POST', '/api/scenario/reset', null, 'Reset complete');
+            const log = $('log');
+            while (log.children.length > 1) log.children[1].remove();
+        }
+    } else {
+        BW.act('POST', `/api/scenario/${a}`, null, a === 'start' ? 'Operations started' : 'Paused');
+    }
+}));
+$('gq').addEventListener('click', () => BW.act('POST', `/api/control/gq/${BW.state?.cop.systems.gq ? 'off' : 'on'}`));
+document.querySelectorAll('[data-presenter]').forEach(b => b.addEventListener('click', () => {
+    const p = b.dataset.presenter;
+    BW.act('POST', `/api/presenter/${p}`, null, p === 'normal' ? 'Normal conditions set' : 'Auto firefight started');
+}));
+document.querySelectorAll('#injmode button').forEach(b => b.addEventListener('click', () =>
+    BW.act('POST', `/api/presenter/auto-inject/${b.dataset.mode}`, null, b.dataset.mode === 'auto' ? 'Auto injection ON' : 'Manual injection')));
+document.querySelectorAll('[data-inject]').forEach(b => b.addEventListener('click', () =>
+    BW.act('POST', `/api/inject/${b.dataset.inject}`, null, `Injected: ${b.textContent}`)));
+
+// AI model server: fields fill once from the server, then belong to the operator.
+let llmFilled = false;
+BW.onState((s) => {
+    if (llmFilled || !s) return;
+    llmFilled = true;
+    $('llm-url').value = s.server.llm.base_url;
+    $('llm-model').value = s.server.llm.local_model;
+    $('llm-effort').value = s.server.llm.reasoning_effort;
+    $('llm-thoughts').checked = s.server.llm.include_thoughts;
+});
+$('llmform').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const r = await BW.act('POST', '/api/llm/endpoint',
+        { base_url: $('llm-url').value, api_key: $('llm-key').value, model: $('llm-model').value,
+          reasoning_effort: $('llm-effort').value, include_thoughts: $('llm-thoughts').checked });
+    if (r) { $('llm-key').value = ''; Notify.show({ variant: 'success', title: `AI model server set to ${r.base_url}` }); }
+});
+
+$('logpane').addEventListener('mouseenter', () => { paused = true; });
+$('logpane').addEventListener('mouseleave', () => { paused = false; });
+
+BW.onState((s, logs) => { render(s, logs); NotifyWatch.update(s, () => window.open('/index.html', 'bw-main')); });
+BW.connect();

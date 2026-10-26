@@ -1,0 +1,145 @@
+{
+ "scenario": "S13",
+ "title": "Fire in Main Engine Room 2 (Condition III)",
+ "round": "r1",
+ "doctrine": "Flying Squad away immediately (always manned), sound GQ so Repair 5 mans up, boundaries at FR 290/348.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 130.0,
+ "expectations": [
+  {
+   "expect": "Flying Squad away",
+   "result": "on time",
+   "reaction_s": 21.1,
+   "deadline_s": 30,
+   "agent": "dca-01",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "MER2",
+    "boundaries": [
+     290,
+     348
+    ]
+   },
+   "model_latency_s": 5.2
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 28.7,
+   "deadline_s": 45,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 5.3
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 30,
+ "latency_s": {
+  "mean": 3.4,
+  "max": 8.4,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 2,
+  "rejected": 5
+ },
+ "blocked_by_warden": {
+  "SYSTEM_STATE": 1,
+  "PROPULSION_LOST": 4
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 6,
+ "intents_total": 7,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [
+  "reply was not JSON"
+ ],
+ "actions_timeline": [
+  {
+   "at": 23.1,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "MER2"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.8,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.8,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "MER2"
+   },
+   "status": "rejected",
+   "why_blocked": "Flying Squad (Duty) is busy (en route)"
+  },
+  {
+   "at": 37.9,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 43.1,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 71.0,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 120.9,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  }
+ ]
+}

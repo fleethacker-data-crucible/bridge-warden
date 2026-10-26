@@ -1,0 +1,38 @@
+# Safety and authority policies, evaluated in the Constraints stage.
+min_cpa_nm: 1.0                # collision agent keeps CPA at or above this
+cpa_buffer_nm: 0.3             # other agents may not push predicted CPA below min + buffer
+critical_cpa_nm: 0.5           # live CPA below this raises a critical alert
+big_turn_deg: 30               # course changes larger than this need a human
+engine_temp_warn_c: 95
+engine_temp_crit_c: 105
+escalation_timeout_s: 120      # real seconds before the safe default applies (2 min for the watch to read)
+auto_quarantine_violations: 3  # critical violations within the window
+violation_window_s: 60
+oscillation_flips: 3           # A↔B flips on one resource within the window → oscillation
+safe_speed_kn: 6
+require_llm_provenance: true   # agent actions must carry a registered LLM call (no Python-made decisions)
+
+# Periodic system check (bridge watch alarm, like BNWAS): the operator must confirm
+# continued autonomous operations. Missed checks escalate; repeated misses → SAFE-STOP.
+system_check_interval_s: 120   # real seconds between checks while operations run
+system_check_timeout_s: 120    # 2 min to respond before the check counts as missed
+system_check_retry_s: 30       # after a miss, ask again this soon
+system_check_max_missed: 2     # consecutive misses → automatic SAFE-STOP
+
+deny:
+  - id: ENERGY_NO_PROPULSION_CONTROL
+    role: energy
+    targets: [rudder]
+    severity: high
+    reason: Energy agents may never command the rudder.
+
+rules:
+  - id: MIN_CPA
+    severity: critical
+    description: Predicted CPA must stay at or above min_cpa_nm.
+  - id: BIG_TURN_NEEDS_HUMAN
+    severity: medium
+    description: Course changes above big_turn_deg need operator approval.
+  - id: IRREVERSIBLE_NEEDS_HUMAN
+    severity: high
+    description: Irreversible actions need operator approval.

@@ -1,0 +1,161 @@
+{
+ "scenario": "S18",
+ "title": "Missile attack with CIWS down",
+ "round": "r2",
+ "doctrine": "No last-ditch hard kill: SM-2 early (2 each), all soft-kill, evasive is worth more now, GQ.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 154.1,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "MISSED",
+   "deadline_s": 25
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "MISSED",
+   "deadline_s": 40
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 19.3,
+   "deadline_s": 40,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 4.0
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "MISSED",
+   "deadline_s": 60
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 11,
+ "latency_s": {
+  "mean": 5.3,
+  "max": 20.0,
+  "min": 1.6
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 2,
+  "rejected": 6
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 3,
+  "OTHER": 1,
+  "SYSTEM_STATE": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 7,
+ "intents_total": 8,
+ "outcome": {
+  "hits": 2,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 2,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": [
+   "SHAFT-1",
+   "CHW",
+   "STEER",
+   "CMD",
+   "FP-3"
+  ]
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 28.3,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 61.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-T23"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 125.1,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 144.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 153.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V1 on the COP"
+  },
+  {
+   "at": 153.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V2 on the COP"
+  },
+  {
+   "at": 153.3,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CMD",
+     "ECM",
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Nixie is for torpedoes: no torpedo or submarine on the COP"
+  },
+  {
+   "at": 153.3,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  }
+ ]
+}

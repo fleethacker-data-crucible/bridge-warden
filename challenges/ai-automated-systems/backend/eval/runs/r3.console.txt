@@ -1,0 +1,50 @@
+== r3 S01
+{"id": "S01", "expect": [["SM-2 launch at first inbound", "on time", 9.1], ["Defenses to active (CIWS/ECM/decoys)", "on time", 9.1], ["General Quarters", "on time", 9.1], ["Evasive maneuver (speed up)", "MISSED", null]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 4, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 4.0, "max": 9.1, "min": 1.5}}
+== r3 S02
+{"id": "S02", "expect": [["SM-2 launch at first inbound", "on time", 10.5], ["Defenses to active (CIWS/ECM/decoys)", "on time", 10.5], ["General Quarters", "on time", 10.5], ["Evasive maneuver (speed up)", "MISSED", null]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 8, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 7.4, "max": 14.2, "min": 1.5}}
+== r3 S03
+{"id": "S03", "expect": [["EMCON on SUSPECT/HOSTILE", "on time", 24.8], ["General Quarters", "on time", 3.8], ["Harpoon return fire at HOSTILE", "MISSED", null]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 1, "gq": true, "unpowered": []}, "lat": {"mean": 3.1, "max": 10.3, "min": 1.4}}
+== r3 S04
+{"id": "S04", "expect": [["General Quarters", "on time", 10.2], ["Harpoon return fire at HOSTILE", "LATE", 88.8]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 2, "gq": true, "unpowered": []}, "lat": {"mean": 3.6, "max": 11.6, "min": 1.4}}
+== r3 S05
+{"id": "S05", "expect": [["Stream Nixie", "on time", 11.5], ["General Quarters", "on time", 11.5], ["Turn away from torpedo", "on time", 14.6], ["Flank speed", "on time", 14.6], ["ASROC at HOSTILE submarine", "on time", 14.6]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 3.3, "max": 9.5, "min": 1.4}}
+== r3 S06
+{"id": "S06", "expect": [["Turn away from torpedo", "on time", 26.6], ["Flank speed", "on time", 26.6], ["Stream Nixie", "on time", 18.9]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 3.6, "max": 15.2, "min": 1.4}}
+== r3 S07
+{"id": "S07", "expect": [["SM-2 launch at first inbound", "on time", 11.2], ["Defenses to active (CIWS/ECM/decoys)", "on time", 11.2], ["General Quarters", "on time", 11.2], ["Stream Nixie", "LATE", 95.2]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 4, "casualties_open": 0, "hostiles_left": 1, "gq": true, "unpowered": []}, "lat": {"mean": 3.9, "max": 9.0, "min": 1.4}}
+== r3 S08
+{"id": "S08", "expect": [["Alter course to starboard", "on time", 47.3]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 3.5, "max": 10.1, "min": 1.4}}
+== r3 S09
+{"id": "S09", "expect": [["Alter course to starboard", "on time", 52.3]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 3.5, "max": 14.1, "min": 1.4}}
+== r3 S10
+{"id": "S10", "expect": [["Turn away from the cells", "on time", 56.7]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 3.7, "max": 7.8, "min": 1.4}}
+== r3 S11
+{"id": "S11", "expect": [["Slow to ~10 kn", "on time", 37.1]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 3.1, "max": 8.4, "min": 1.4}}
+== r3 S12
+{"id": "S12", "expect": [["Send a repair party to MER2", "on time", 22.6]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 3.0, "max": 8.1, "min": 1.4}}
+== r3 S13
+{"id": "S13", "expect": [["Flying Squad away", "on time", 23.8], ["General Quarters", "on time", 4.6]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 4.0, "max": 14.0, "min": 1.4}}
+== r3 S14
+{"id": "S14", "expect": [["Repair party to STEER", "on time", 23.7], ["General Quarters", "on time", 11.6]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 3.2, "max": 8.3, "min": 1.4}}
+== r3 S15
+{"id": "S15", "expect": [["Repair 8/2 to CIC", "on time", 17.2]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 3.1, "max": 9.8, "min": 1.4}}
+== r3 S16
+{"id": "S16", "expect": [["Team to the first casualty", "on time", 19.6], ["Team to the second casualty", "on time", 17.6]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 3.2, "max": 8.4, "min": 1.4}}
+== r3 S17
+{"id": "S17", "expect": [["Restore power (close a breaker)", "on time", 22.3]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 4.5, "max": 9.6, "min": 2.4}}
+== r3 S18
+{"id": "S18", "expect": [["SM-2 launch at first inbound", "on time", 9.1], ["Defenses to active (CIWS/ECM/decoys)", "on time", 9.1], ["General Quarters", "on time", 9.1], ["Evasive maneuver (speed up)", "MISSED", null]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 4, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 4.4, "max": 8.7, "min": 1.4}}
+== r3 S19
+{"id": "S19", "expect": [], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 2.6, "max": 7.0, "min": 0.4}}
+== r3 S20
+{"id": "S20", "expect": [], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 3.1, "max": 8.4, "min": 1.4}}
+== r3 S21
+{"id": "S21", "expect": [], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 0, "casualties_open": 0, "hostiles_left": 0, "gq": false, "unpowered": []}, "lat": {"mean": 3.5, "max": 8.9, "min": 1.4}}
+== r3 S22
+{"id": "S22", "expect": [["Restore combat power", "on time", 17.9], ["General Quarters", "on time", 15.3], ["SM-2 launch once power is back", "on time", 8.3]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 4, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 5.2, "max": 20.2, "min": 1.4}}
+== r3 S23
+{"id": "S23", "expect": [["SM-2 launch at first inbound", "on time", 9.6], ["Defenses to active (CIWS/ECM/decoys)", "on time", 9.6], ["General Quarters", "on time", 9.6], ["Evasive maneuver (speed up)", "MISSED", null]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 24, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 5.8, "max": 11.9, "min": 1.5}}
+== r3 S24
+{"id": "S24", "expect": [["SM-2 launch at first inbound", "on time", 10.6], ["Defenses to active (CIWS/ECM/decoys)", "on time", 10.6], ["General Quarters", "on time", 10.6]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 4, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 5.3, "max": 12.9, "min": 1.5}}
+== r3 S25
+{"id": "S25", "expect": [["SM-2 launch", "on time", 8.5]], "over": 0, "outcome": {"hits": 0, "torpedo_hits": 0, "sm2_used": 6, "casualties_open": 0, "hostiles_left": 0, "gq": true, "unpowered": []}, "lat": {"mean": 4.8, "max": 10.0, "min": 1.4}}

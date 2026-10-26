@@ -1,0 +1,104 @@
+{
+ "scenario": "S23",
+ "title": "Four missiles, two SM-2 left",
+ "round": "r2",
+ "doctrine": "Spend 1 round each on the two closest, soft-kill everything, evasive at flank, GQ. Accept risk on the rest.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 160.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "MISSED",
+   "deadline_s": 25
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "MISSED",
+   "deadline_s": 40
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 3.2,
+   "deadline_s": 40,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 3.8
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "MISSED",
+   "deadline_s": 60
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 12,
+ "latency_s": {
+  "mean": 3.3,
+  "max": 6.7,
+  "min": 1.2
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 2,
+  "rejected": 1
+ },
+ "blocked_by_warden": {
+  "OTHER": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 3,
+ "intents_total": 3,
+ "outcome": {
+  "hits": 4,
+  "torpedo_hits": 0,
+  "sm2_used": 22,
+  "casualties_open": 4,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": [
+   "SHAFT-1",
+   "CHW",
+   "STEER",
+   "CMD",
+   "FP-3"
+  ]
+ },
+ "llm_errors": [
+  ""
+ ],
+ "actions_timeline": [
+  {
+   "at": 12.2,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 94.2,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 114.6,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  }
+ ]
+}

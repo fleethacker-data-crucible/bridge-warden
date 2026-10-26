@@ -1,0 +1,141 @@
+{
+ "scenario": "S17",
+ "title": "Loss of SSGTG-2 (aft plant dark: shafts, steering)",
+ "round": "r1",
+ "doctrine": "Start SSGTG-3 and pick up LC-3/LC-4 (close B-G3, B-3L3, B-3L4) or cross-connect B-1L3 if load allows. Check generator load before closing.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 137.1,
+ "expectations": [
+  {
+   "expect": "Restore power (close a breaker)",
+   "result": "LATE",
+   "reaction_s": 137.0,
+   "deadline_s": 45,
+   "agent": "pwr-01",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "model_latency_s": 12.2
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 31,
+ "latency_s": {
+  "mean": 4.4,
+  "max": 14.5,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 6,
+  "executed": 3
+ },
+ "blocked_by_warden": {
+  "PROPULSION_LOST": 6
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 9,
+ "intents_total": 9,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": false,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 34.0,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 39.9,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 59.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 71.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 107.9,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 119.3,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  },
+  {
+   "at": 137.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 137.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 137.0,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

@@ -1,0 +1,119 @@
+{
+ "scenario": "S15",
+ "title": "Fire in CIC at General Quarters",
+ "round": "r2",
+ "doctrine": "All lockers manned: Repair 8 (electronics) or Repair 2, whichever is closer, to CIC immediately.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 164.0,
+ "expectations": [
+  {
+   "expect": "Repair 8/2 to CIC",
+   "result": "LATE",
+   "reaction_s": 36.3,
+   "deadline_s": 30,
+   "agent": "dca-01",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "CIC",
+    "boundaries": [
+     130,
+     200
+    ]
+   },
+   "model_latency_s": 4.9
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 41,
+ "latency_s": {
+  "mean": 3.9,
+  "max": 20.4,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 4,
+  "rejected": 2
+ },
+ "blocked_by_warden": {
+  "OTHER": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 6,
+ "intents_total": 6,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 38.4,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "CIC"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 49.2,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 55.6,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 89.1,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 97.9,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 142.4,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

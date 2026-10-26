@@ -1,0 +1,150 @@
+{
+ "scenario": "S02",
+ "title": "Saturation raid: 4 missiles, two bearings",
+ "round": "r2",
+ "doctrine": "Same as S01 but prioritize the closest inbound first, 2 rounds each while magazine allows, all soft-kill up.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 165.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "on time",
+   "reaction_s": 15.4,
+   "deadline_s": 25,
+   "agent": "def-01",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "model_latency_s": 12.9
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "MISSED",
+   "deadline_s": 40
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 15.4,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 12.9
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "MISSED",
+   "deadline_s": 60
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 11,
+ "latency_s": {
+  "mean": 3.9,
+  "max": 12.9,
+  "min": 1.8
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 4,
+  "rejected": 2
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 1,
+  "OTHER": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 6,
+ "intents_total": 6,
+ "outcome": {
+  "hits": 3,
+  "torpedo_hits": 0,
+  "sm2_used": 2,
+  "casualties_open": 3,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": [
+   "SHAFT-1",
+   "CHW",
+   "STEER",
+   "CMD",
+   "FP-3"
+  ]
+ },
+ "llm_errors": [
+  "",
+  "reply was not JSON"
+ ],
+ "actions_timeline": [
+  {
+   "at": 24.4,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 24.4,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM",
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Nixie is for torpedoes: no torpedo or submarine on the COP"
+  },
+  {
+   "at": 24.4,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 24.4,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 85.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 114.6,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 133.0,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  }
+ ]
+}

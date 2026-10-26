@@ -1,0 +1,111 @@
+{
+ "scenario": "S08",
+ "title": "Crossing merchant from starboard (COLREGs)",
+ "round": "r1",
+ "doctrine": "Give-way vessel: early, substantial alteration to starboard (20-40 deg) so CPA >= 1 nm. No weapons, no GQ.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 150.0,
+ "expectations": [
+  {
+   "expect": "Alter course to starboard",
+   "result": "LATE",
+   "reaction_s": 95.0,
+   "deadline_s": 90,
+   "agent": "col-01",
+   "params": {
+    "heading": 110.0
+   },
+   "model_latency_s": 8.8
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 36,
+ "latency_s": {
+  "mean": 3.3,
+  "max": 11.3,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 4,
+  "rejected": 2
+ },
+ "blocked_by_warden": {
+  "OTHER": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 6,
+ "intents_total": 6,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": false,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 25.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.5,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 75.9,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 80.5,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 95.0,
+   "agent": "col-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 110.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 114.3,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

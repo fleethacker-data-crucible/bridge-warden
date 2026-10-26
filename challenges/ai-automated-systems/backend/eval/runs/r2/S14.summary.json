@@ -1,0 +1,193 @@
+{
+ "scenario": "S14",
+ "title": "Flooding aft (steering gear room)",
+ "round": "r2",
+ "doctrine": "Flying Squad / Repair 3 to STEER, GQ. Steering lost: no rudder orders until restored.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 215.0,
+ "expectations": [
+  {
+   "expect": "Repair party to STEER",
+   "result": "LATE",
+   "reaction_s": 31.2,
+   "deadline_s": 30,
+   "agent": "dca-01",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "STEER",
+    "boundaries": [
+     440,
+     505
+    ]
+   },
+   "model_latency_s": 6.8
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 13.1,
+   "deadline_s": 45,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 3.8
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 47,
+ "latency_s": {
+  "mean": 3.7,
+  "max": 12.8,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 8,
+  "rejected": 4
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 1,
+  "OTHER": 3
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 12,
+ "intents_total": 12,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [
+  "reply was not JSON"
+ ],
+ "actions_timeline": [
+  {
+   "at": 15.1,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 33.2,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "STEER"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 33.2,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 44.6,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 54.3,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 70.7,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 81.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 89.1,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 111.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 136.9,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 179.8,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 190.5,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  }
+ ]
+}

@@ -1,0 +1,142 @@
+{
+ "scenario": "S01",
+ "title": "Anti-ship missile pair from over the horizon",
+ "round": "r2",
+ "doctrine": "Detect at 20 nm (~144 s to impact). Within ~20 s: batteries release 2x SM-2 at each inbound, weapons free (CIWS, SLQ-32, decoys), sound GQ, come to flank speed and put the threat ~45 deg off the bow. Second salvo on any leaker inside 15 nm.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 154.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "MISSED",
+   "deadline_s": 25
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "MISSED",
+   "deadline_s": 40
+  },
+  {
+   "expect": "General Quarters",
+   "result": "LATE",
+   "reaction_s": 142.0,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 9.5
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "MISSED",
+   "deadline_s": 60
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 12,
+ "latency_s": {
+  "mean": 3.6,
+  "max": 9.5,
+  "min": 1.5
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 2,
+  "rejected": 4
+ },
+ "blocked_by_warden": {
+  "OTHER": 1,
+  "SYSTEM_STATE": 2,
+  "NOT_WARRANTED": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 6,
+ "intents_total": 6,
+ "outcome": {
+  "hits": 2,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 2,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": [
+   "SHAFT-1",
+   "CHW",
+   "STEER",
+   "CMD",
+   "FP-3"
+  ]
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 106.1,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 125.6,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 151.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V1 on the COP"
+  },
+  {
+   "at": 151.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V2 at 0.6 nm is inside SM-2 minimum range 1.5 nm (CIWS only)"
+  },
+  {
+   "at": 151.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM",
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Nixie is for torpedoes: no torpedo or submarine on the COP"
+  },
+  {
+   "at": 151.0,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

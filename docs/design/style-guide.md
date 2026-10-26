@@ -104,6 +104,10 @@ Drop this file in every product as `styles/tokens.css`. Values are sampled from 
   --badge-red:      #ff6b6b;  /* REJECTED, QUARANTINED, CRITICAL */
   --badge-grey:     #9a9a9a;  /* IDLE, PAUSED, EXPIRED */
 
+  /* Notification banners (7.17) */
+  --notify-system:  #ee7ab6;  /* pink system notice, sampled from 230759.png */
+  --notify-text-on-yellow: #1b1b1b;
+
   /* ---- percent / score text ---- */
   --pct-low:        #ff6b6b;  /* e.g. 5% */
   --pct-mid:        #f0a24a;  /* e.g. 25% */
@@ -366,11 +370,60 @@ Transparent background. Axis labels 11 px muted. Gridlines are only the canvas g
 
 ---
 
+### 7.17 Notifications (decision and status banners)
+
+Reference: `Screenshot 2026-10-25 230759.png` (system notice, pink) and `230817.png` (error, red).
+
+**Every product must have this.** Whenever something needs the operator's attention, and **always when a decision needs to be acted on**, a notification drops in at the **top center of the window**, so the operator sees it without switching screens.
+
+**Look**
+- Solid fill in the meaning colour, no border, `--radius-sm`, width 480–560 px (max 90% of the window), padding 14 × 16 px.
+- Message 14 px/700 in white (dark `#1b1b1b` on yellow). An optional second line is 12.5 px/400 at 90% opacity.
+- `×` close at the far right: 16 px, white at 85%.
+- Position: centred horizontally in the window, 24 px below the app header, above everything except modals. It slides down 8 px over 160 ms and is **fully opaque from the first frame**. Never fade a safety banner in: an unfocused or background window can freeze the animation partway, leaving it half-visible.
+- Stack: newest on top, 8 px gap.
+
+| Variant | Fill | Use |
+|---|---|---|
+| `system` | `--notify-system` (pink) | Lifecycle and status: "Site offline. Port 24618 released." |
+| `success` | `--green` | An operator action completed: "Approved", "Ledger chain valid" |
+| `warn` | `--orange` | Something degraded but handled: "Safe default applied", "Oscillation damped" |
+| `error` | `--red` | Failed or critical: "The engine is not running.", "Agent quarantined", "SAFE-STOP engaged" |
+| `decision` | `--badge-yellow` with dark text | **A human must decide.** Title, one-line summary, countdown bar, and the decision buttons inside the banner |
+
+**Decision notifications**
+- Hold the action buttons **inside the banner** (e.g. green `Approve` | red `Reject`, 26 px), so the operator can act from any screen.
+- The buttons **arm after 750 ms** (shown dimmed until then), so a banner appearing under the cursor can't be clicked by accident.
+- Show the time left until the safe default: a 3 px dark bar along the bottom edge, plus "Safe default in 32 s".
+- The decision is also always shown on the main working view (for Bridge Warden, the COP), with the same buttons. The banner is a shortcut, not the only place to decide.
+
+**Anti-flood rules (mandatory)**
+1. **Auto-dismiss in 5–8 s:** system/success 5 s, warn 6 s, error 8 s, decision 8 s. Hovering pauses the timer; `×` closes immediately.
+2. **At most 3 banners visible.** Extra banners queue and show as they free up. A small muted chip "+N more" sits under the stack while the queue is non-empty.
+3. **Dedupe:** a banner with the same key (source + message) within 10 s doesn't stack. The existing banner shows a counter (`×3`) and its timer restarts.
+4. **Rate limit:** at most 1 new non-decision banner per second. Decisions go to the **front** of the queue and bump a non-decision banner, but the 3-banner cap still applies, even to decisions. Several decisions at once must not cover the working view.
+4a. **Keep banners short:** body text is cut to about 170 characters. The full detail lives on the main view's decision panel.
+5. **Never lose a decision:** when a decision banner times out but the decision is still open, it collapses into a persistent yellow pill at the same top-center spot: "⚑ 2 decisions pending · Review". It stays until no decisions remain. Clicking it opens the main view's decision panel.
+6. **Banners are only for decisions and critical alerts.** Everything else goes to the log only: routine events, warnings, system notices, and confirmations of what the operator just did. In practice only the `decision` and `error` variants appear; `system`, `success` and `warn` are kept for products that truly need them.
+6a. **Scope to the view.** When a product has several operating pictures, each picture shows only its own banners and decision cards, plus ship-wide ones (SAFE-STOP, system checks, containment). The pending pill says how many decisions are waiting on other pictures.
+7. Every banner's message is also written to the log, so nothing exists only in a banner.
+
+### 7.18 Destructive confirmation modal
+
+Reference: `Screenshot 2026-10-25 230845.png`.
+
+For actions that **cannot be undone** (purge, permanent delete, reset everything):
+- A standard modal (7.11) with a **2 px `--red` border** and a red glow: `box-shadow: 0 0 0 1px rgba(229,72,77,.35), 0 0 28px rgba(229,72,77,.35)`.
+- Title 16 px/700 → question 14 px/700 → **"WARNING:"** 14 px/700 in `--badge-red` → consequence text 13 px in `--badge-red`.
+- Typed acknowledgement: muted 12 px label "Type I Acknowledge to continue", then an input (focus = 1 px `--blue`). The destructive button stays **disabled** until the text matches exactly (case-insensitive).
+- Footer 50/50: the destructive action on the left (disabled grey until armed, then `--red`) | `Cancel` grey on the right. `Esc` = Cancel. Focus starts in the input.
+
 ## 8. Behaviour & motion
 
 - Transitions 120–160 ms ease-out on hover/selection. Drawers slide in 200 ms. No bounces.
 - Live numbers update in place without animation, with no layout shift (use `font-variant-numeric: tabular-nums`).
-- Destructive actions confirm with a modal. Global stop actions use a **hold** gesture or a modifier key instead.
+- Destructive actions confirm with a modal; irreversible ones use the typed-acknowledgement modal (7.18). Global stop actions use a **hold** gesture or a modifier key instead.
+- Decisions and important events raise a notification (7.17) and follow its anti-flood rules.
 - Logs auto-scroll and pause on hover.
 - `Esc` closes the topmost modal or drawer.
 - Every window remembers its theme from the shared setting.
@@ -403,6 +456,10 @@ Transparent background. Axis labels 11 px muted. Gridlines are only the canvas g
 | Drawer button row | Override (orange) · Constrain · Downgrade · Rollback · Pause (grey) · Quarantine (red) |
 | Log milestone row | SAFE-STOP engaged, scenario start (green); quarantine / critical breach use a red variant |
 | Modal | Rollback preview, Constrain sliders, Load Scenario |
+| Decision notification | Every new escalation: Approve / Reject in the banner; also on the COP with the proposed course drawn on the map |
+| Error notification | Agent quarantined, critical CPA, engine critical, SAFE-STOP engaged |
+| Warn notification | Safe default applied (escalation timed out), oscillation damped |
+| Destructive modal | Reset All (wipes scenario, agents and ledger) |
 
 ## 11. Checklist for any new screen
 
@@ -414,3 +471,6 @@ Transparent background. Axis labels 11 px muted. Gridlines are only the canvas g
 - [ ] Tables use row cards; selection opens a drawer and compresses columns
 - [ ] Modals: scrim, title, neutral caps sections, footer per §7.1
 - [ ] Readable at 1280×720 on a projector (bump `html { font-size }` if not)
+- [ ] Any decision the operator must make raises a decision notification and can be acted on from the main working view without switching screens (7.17)
+- [ ] Notifications follow the anti-flood rules: 5–8 s, max 3, dedupe, rate limit, pending pill
+- [ ] Irreversible actions use the typed-acknowledgement modal (7.18)

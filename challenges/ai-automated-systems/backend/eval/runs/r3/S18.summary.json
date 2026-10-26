@@ -1,0 +1,332 @@
+{
+ "scenario": "S18",
+ "title": "Missile attack with CIWS down",
+ "round": "r3",
+ "doctrine": "No last-ditch hard kill: SM-2 early (2 each), all soft-kill, evasive is worth more now, GQ.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 86.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "on time",
+   "reaction_s": 9.1,
+   "deadline_s": 25,
+   "agent": "def-01",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "model_latency_s": 8.6
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "on time",
+   "reaction_s": 9.1,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "systems": [
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "model_latency_s": 8.6
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 9.1,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 8.6
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "MISSED",
+   "deadline_s": 60
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 19,
+ "latency_s": {
+  "mean": 4.4,
+  "max": 8.7,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 15,
+  "executed": 7
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 10,
+  "SYSTEM_STATE": 3,
+  "MIN_CPA": 1,
+  "OTHER": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 22,
+ "intents_total": 22,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 4,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 7.0,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "No casualty, SUSPECT/HOSTILE track or inbound threat on any COP"
+  },
+  {
+   "at": 7.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound threats and no track classified HOSTILE inside 10 nm on the COP"
+  },
+  {
+   "at": 18.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 18.1,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 18.1,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 18.1,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 130.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V1 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 30.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.1,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 30.1,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 33.3,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 41.8,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V2 is already released, held for the SM-2 envelope"
+  },
+  {
+   "at": 41.8,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "CIWS not available (no power or damaged)"
+  },
+  {
+   "at": 41.8,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 130.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 41.8,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "rejected",
+   "why_blocked": "Predicted CPA 0.45 nm < 1.3 nm (now 3.06)"
+  },
+  {
+   "at": 46.4,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 58.3,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 58.3,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 67.7,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 72.4,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 83.7,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 83.7,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  }
+ ]
+}

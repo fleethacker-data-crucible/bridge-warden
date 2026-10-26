@@ -1,0 +1,225 @@
+{
+ "scenario": "S01",
+ "title": "Anti-ship missile pair from over the horizon",
+ "round": "r1",
+ "doctrine": "Detect at 20 nm (~144 s to impact). Within ~20 s: batteries release 2x SM-2 at each inbound, weapons free (CIWS, SLQ-32, decoys), sound GQ, come to flank speed and put the threat ~45 deg off the bow. Second salvo on any leaker inside 15 nm.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 98.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "LATE",
+   "reaction_s": 70.1,
+   "deadline_s": 25,
+   "agent": "def-01",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "model_latency_s": 23.2
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "on time",
+   "reaction_s": 21.8,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "model_latency_s": 20.7
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 21.8,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 20.7
+  },
+  {
+   "expect": "Evasive maneuver (speed up)",
+   "result": "on time",
+   "reaction_s": 21.8,
+   "deadline_s": 60,
+   "agent": "def-01",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "model_latency_s": 20.7
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 9,
+ "latency_s": {
+  "mean": 9.0,
+  "max": 23.2,
+  "min": 2.2
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 7,
+  "rejected": 5
+ },
+ "blocked_by_warden": {
+  "ACTION_LIMIT": 1,
+  "NOT_WARRANTED": 4
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 12,
+ "intents_total": 12,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 4,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 30.8,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.8,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 30.8,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 175.0
+   },
+   "status": "rejected",
+   "why_blocked": "Turn 85\u00b0 exceeds limit 60\u00b0"
+  },
+  {
+   "at": 30.8,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 53.2,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CIWS",
+     "ADS",
+     "CMD",
+     "ECM"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Every requested defense is already active (nothing to decide)"
+  },
+  {
+   "at": 53.2,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 53.2,
+   "agent": "def-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 85.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 53.2,
+   "agent": "def-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 31.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 79.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 79.1,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 79.1,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Nixie is for torpedoes: no torpedo or submarine on the COP"
+  },
+  {
+   "at": 79.1,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  }
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "scenario": "S22",
+ "title": "Missile attack + loss of SSGTG-1 (CIC and forward VLS dark)",
+ "round": "r2",
+ "doctrine": "Fight the ship: restore power to LC-1/LC-2 (B-2L1/B-2L2 or SSGTG-3) FIRST to get SM-2/CIWS back, while soft-kill/evasive buy time.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 176.0,
+ "expectations": [
+  {
+   "expect": "Restore combat power",
+   "result": "on time",
+   "reaction_s": 35.1,
+   "deadline_s": 40,
+   "agent": "pwr-01",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "model_latency_s": 21.0
+  },
+  {
+   "expect": "General Quarters",
+   "result": "MISSED",
+   "deadline_s": 40
+  },
+  {
+   "expect": "SM-2 launch once power is back",
+   "result": "n/a (trigger never happened)",
+   "deadline_s": 30
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 19,
+ "latency_s": {
+  "mean": 4.1,
+  "max": 21.0,
+  "min": 1.5
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 2,
+  "rejected": 2
+ },
+ "blocked_by_warden": {
+  "OTHER": 1,
+  "PROPULSION_LOST": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 4,
+ "intents_total": 4,
+ "outcome": {
+  "hits": 2,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 2,
+  "hostiles_left": 0,
+  "gq": false,
+  "unpowered": [
+   "ADS",
+   "FP-1",
+   "CIWS",
+   "RADAR",
+   "ECM",
+   "COMMS",
+   "SHAFT-1",
+   "CHW",
+   "STEER",
+   "CMD",
+   "FP-3"
+  ]
+ },
+ "llm_errors": [
+  ""
+ ],
+ "actions_timeline": [
+  {
+   "at": 35.2,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 44.2,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 49.6,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 173.5,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "rejected",
+   "why_blocked": "Main propulsion unavailable"
+  }
+ ]
+}

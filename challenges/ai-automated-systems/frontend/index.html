@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridge Warden</title>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="banner paused-banner" id="paused">SIMULATION PAUSED · press Start Operations in Warden Control (or inject an issue)</div>
+<div class="banner" id="banner">SAFE-STOP ENGAGED · ALL AGENTS PAUSED · HOLDING COURSE AT SAFE SPEED</div>
+<header class="header">
+  <div class="logo app">BW</div>
+  <div class="vdiv"></div>
+  <div>
+    <div class="title">Bridge Warden <span class="badge b-green badge-unclass">Unclassified</span></div>
+    <div class="subtitle" id="sub">Multi-agent governance · connecting…</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Agent Authority</div><div class="v" id="k-auth">–</div></div>
+    <div class="kpi"><div class="l">Condition</div><div class="v" id="k-gq">–</div></div>
+    <div class="kpi"><div class="l">Ship's Time</div><div class="v mono" id="k-sim">–</div></div>
+    <div class="kpi"><div class="l">Agents Active</div><div class="v" id="k-agents">–</div></div>
+    <div class="kpi"><div class="l">Intents / Min</div><div class="v" id="k-ipm">–</div></div>
+    <div class="kpi"><div class="l">Conflicts</div><div class="v" id="k-cf">–</div></div>
+    <div class="kpi"><div class="l">Escalations</div><div class="v" id="k-esc">–</div></div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="sidebar">
+    <h2>Menu</h2>
+    <div class="nav-item active" data-page="overview"><span class="icon">◎</span>Navigation</div>
+    <div class="nav-item" data-page="systems"><span class="icon">⌁</span>Ship Systems</div>
+    <div class="nav-item" data-page="dc"><span class="icon">⛑</span>Damage Control</div>
+    <div class="nav-item" data-page="agents"><span class="icon">▣</span>Agents<span class="count" id="n-agents"></span></div>
+    <div class="nav-item" data-page="intents"><span class="icon">⇢</span>Intents<span class="count" id="n-intents"></span></div>
+    <div class="nav-item" data-page="conflicts"><span class="icon">⚡</span>Conflicts<span class="count" id="n-conflicts"></span></div>
+    <div class="nav-item" data-page="escalations"><span class="icon">⚑</span>Escalations<span class="count" id="n-esc"></span></div>
+    <div class="nav-item" data-page="ledger"><span class="icon">≡</span>Ledger</div>
+    <div class="foot"><button class="btn" style="width:100%" onclick="window.open('/control.html','bw-control')">Open Warden Control</button></div>
+  </nav>
+  <div class="with-drawer">
+    <main class="content" id="content"></main>
+    <aside class="drawer" id="drawer"></aside>
+  </div>
+</div>
+<script src="js/common.js"></script>
+<script src="js/notify.js"></script>
+<script src="js/oversight.js"></script>
+<script src="js/cops.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

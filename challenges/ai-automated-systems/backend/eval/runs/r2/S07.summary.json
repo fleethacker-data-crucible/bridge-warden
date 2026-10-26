@@ -1,0 +1,138 @@
+{
+ "scenario": "S07",
+ "title": "Missiles and torpedoes at the same time",
+ "round": "r2",
+ "doctrine": "Missiles first (seconds) then torpedo (minutes): SM-2 + soft kill + GQ now; course choice that both opens from the torpedo and keeps missiles off the bow; Nixie.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 330.0,
+ "expectations": [
+  {
+   "expect": "SM-2 launch at first inbound",
+   "result": "MISSED",
+   "deadline_s": 25
+  },
+  {
+   "expect": "Defenses to active (CIWS/ECM/decoys)",
+   "result": "MISSED",
+   "deadline_s": 40
+  },
+  {
+   "expect": "General Quarters",
+   "result": "LATE",
+   "reaction_s": 203.2,
+   "deadline_s": 40,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 8.3
+  },
+  {
+   "expect": "Stream Nixie",
+   "result": "MISSED",
+   "deadline_s": 45
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 24,
+ "latency_s": {
+  "mean": 4.1,
+  "max": 10.0,
+  "min": 1.5
+ },
+ "failed_calls": 0,
+ "intents": {
+  "rejected": 2,
+  "executed": 4
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 1,
+  "OTHER": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 6,
+ "intents_total": 6,
+ "outcome": {
+  "hits": 2,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 2,
+  "hostiles_left": 1,
+  "gq": true,
+  "unpowered": [
+   "SHAFT-1",
+   "CHW",
+   "STEER",
+   "CMD",
+   "FP-3"
+  ]
+ },
+ "llm_errors": [
+  "",
+  ""
+ ],
+ "actions_timeline": [
+  {
+   "at": 25.2,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 35.4,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 35.4,
+   "agent": "nav-01",
+   "action": "set_heading",
+   "params": {
+    "heading": 90.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 40.3,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 250.2,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 250.2,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "MER2"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

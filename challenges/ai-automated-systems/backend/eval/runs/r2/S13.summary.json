@@ -1,0 +1,181 @@
+{
+ "scenario": "S13",
+ "title": "Fire in Main Engine Room 2 (Condition III)",
+ "round": "r2",
+ "doctrine": "Flying Squad away immediately (always manned), sound GQ so Repair 5 mans up, boundaries at FR 290/348.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 140.0,
+ "expectations": [
+  {
+   "expect": "Flying Squad away",
+   "result": "LATE",
+   "reaction_s": 31.6,
+   "deadline_s": 30,
+   "agent": "dca-01",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "MER2",
+    "boundaries": [
+     290,
+     348
+    ]
+   },
+   "model_latency_s": 8.7
+  },
+  {
+   "expect": "General Quarters",
+   "result": "on time",
+   "reaction_s": 11.6,
+   "deadline_s": 45,
+   "agent": "dca-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 3.8
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 35,
+ "latency_s": {
+  "mean": 3.7,
+  "max": 11.2,
+  "min": 1.4
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 8,
+  "rejected": 3
+ },
+ "blocked_by_warden": {
+  "NOT_WARRANTED": 2,
+  "OTHER": 1
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 11,
+ "intents_total": 11,
+ "outcome": {
+  "hits": 0,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 0,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 13.6,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 24.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 24.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 24.9,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 33.7,
+   "agent": "dca-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  },
+  {
+   "at": 33.7,
+   "agent": "dca-01",
+   "action": "dispatch_team",
+   "params": {
+    "team": "FS",
+    "casualty": "CAS-1",
+    "compartment": "MER2"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 45.1,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 87.5,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 92.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 109.1,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-2L1"
+   },
+   "status": "rejected",
+   "why_blocked": "No unpowered equipment and no overloaded generator on the Ship Systems COP"
+  },
+  {
+   "at": 132.3,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  }
+ ]
+}

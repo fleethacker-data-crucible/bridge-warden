@@ -1,0 +1,217 @@
+{
+ "scenario": "S22",
+ "title": "Missile attack + loss of SSGTG-1 (CIC and forward VLS dark)",
+ "round": "r1",
+ "doctrine": "Fight the ship: restore power to LC-1/LC-2 (B-2L1/B-2L2 or SSGTG-3) FIRST to get SM-2/CIWS back, while soft-kill/evasive buy time.",
+ "model": "gemma-4-e4b_q4_0-it",
+ "duration_s": 173.0,
+ "expectations": [
+  {
+   "expect": "Restore combat power",
+   "result": "on time",
+   "reaction_s": 35.5,
+   "deadline_s": 40,
+   "agent": "pwr-01",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "model_latency_s": 21.0
+  },
+  {
+   "expect": "General Quarters",
+   "result": "LATE",
+   "reaction_s": 78.0,
+   "deadline_s": 40,
+   "agent": "def-01",
+   "params": {
+    "on": true
+   },
+   "model_latency_s": 22.6
+  },
+  {
+   "expect": "SM-2 launch once power is back",
+   "result": "MISSED",
+   "deadline_s": 30
+  }
+ ],
+ "overreactions": [],
+ "model_answers": 17,
+ "latency_s": {
+  "mean": 7.1,
+  "max": 22.9,
+  "min": 1.7
+ },
+ "failed_calls": 0,
+ "intents": {
+  "executed": 7,
+  "rejected": 7
+ },
+ "blocked_by_warden": {
+  "OTHER": 1,
+  "SYSTEM_STATE": 4,
+  "NOT_WARRANTED": 2
+ },
+ "alternatives_offered": 0,
+ "risk_filled": 14,
+ "intents_total": 14,
+ "outcome": {
+  "hits": 1,
+  "torpedo_hits": 0,
+  "sm2_used": 0,
+  "casualties_open": 1,
+  "hostiles_left": 0,
+  "gq": true,
+  "unpowered": []
+ },
+ "llm_errors": [],
+ "actions_timeline": [
+  {
+   "at": 35.5,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-G3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 35.5,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 35.5,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-3L4"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 45.3,
+   "agent": "nav-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 16.0
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 51.2,
+   "agent": "nrg-01",
+   "action": "set_speed",
+   "params": {
+    "speed_kn": 12.0
+   },
+   "status": "rejected",
+   "why_blocked": "main_engine held by nav-01 (priority 40)"
+  },
+  {
+   "at": 108.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Mk 41 VLS / SM-2 not available (no power or damaged)"
+  },
+  {
+   "at": 108.0,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "Mk 41 VLS / SM-2 not available (no power or damaged)"
+  },
+  {
+   "at": 108.0,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "CMD"
+    ]
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 108.0,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 146.3,
+   "agent": "pwr-01",
+   "action": "close_breaker",
+   "params": {
+    "breaker": "B-1L3"
+   },
+   "status": "executed",
+   "why_blocked": ""
+  },
+  {
+   "at": 169.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V1",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "OTH-V1 at 0.5 nm is outside SM-2 range 1.5-15.0 nm"
+  },
+  {
+   "at": 169.3,
+   "agent": "def-01",
+   "action": "engage_target",
+   "params": {
+    "target": "OTH-V2",
+    "rounds": 2
+   },
+   "status": "rejected",
+   "why_blocked": "No inbound or HOSTILE track OTH-V2 on the COP"
+  },
+  {
+   "at": 169.3,
+   "agent": "def-01",
+   "action": "activate_defense",
+   "params": {
+    "systems": [
+     "NIXIE"
+    ]
+   },
+   "status": "rejected",
+   "why_blocked": "Nixie is for torpedoes: no torpedo or submarine on the COP"
+  },
+  {
+   "at": 169.3,
+   "agent": "def-01",
+   "action": "set_gq",
+   "params": {
+    "on": true
+   },
+   "status": "rejected",
+   "why_blocked": "General Quarters is already set"
+  }
+ ]
+}
