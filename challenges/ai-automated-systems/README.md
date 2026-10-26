@@ -5,26 +5,38 @@
 - **Plan:** [docs/plan.md](docs/plan.md)
 
 ## Run it
-Needs Python 3.12+ and [uv](https://docs.astral.sh/uv/). From this folder:
+Nothing to install. Windows PowerShell 5.1 compiles the C# in `host\src` with `Add-Type` (C# 5, framework assemblies only) and serves the UI on loopback. From this folder:
 ```powershell
-.\run.ps1          # demo profile; opens Warden Control and the main app at http://localhost:8000
-.\run.ps1 -Edge    # low-power edge profile
+.\run.bat                 # or .\run.ps1; opens Warden Control and the main app (port 8774, or the next free one up to 8776)
+.\run.ps1 -Edge           # low-power edge profile
+.\BridgeWarden-Dev.bat    # developer launcher: visible console, pauses on errors
+.\BridgeWarden-Dev.bat -CheckOnly   # source rules + compile only
 ```
-Then click **Start Operations** in Warden Control. The sim runs at 3x real time in *ops normal*; the presenter drives events with the **Inject** buttons (contact, overheat, storm, rogue). Every decision gives the operator 2 minutes, and a **periodic system check** asks the operator to confirm operations every 2 minutes (two misses → automatic SAFE-STOP). Use **SAFE-STOP** (hold 2 s) at any time. Presenter script: [docs/demo-script.md](docs/demo-script.md). For the scripted hands-off run, set `$env:SCENARIO='full_demo'` first.
+Then click **Start Operations** in Warden Control. The sim runs in *ops normal*; the presenter drives events with the **Inject** buttons (contact, overheat, storm, rogue). Every decision gives the operator 2 minutes, and a **periodic system check** asks the operator to confirm operations every 2 minutes (two misses → automatic SAFE-STOP). Use **SAFE-STOP** (hold 2 s) at any time. Presenter script: [docs/demo-script.md](docs/demo-script.md). For the scripted hands-off run, set `$env:SCENARIO='full_demo'` first.
+
+AI calls default to local phoenix-lai at `http://127.0.0.1:1234/v1` (model `phoenixlai`); with no model there, agents show NO MODEL and explanations use rule text. Settings: `backend\.env` (from `backend\.env.example`) or the AI Model Server box in Warden Control. Port block 8774-8776 is provisional until edge-ops `PORTS.md` lists Bridge Warden. The host answers `/__fleethacker/id` and `/__fleethacker/shutdown`.
+
+Ship it as one text file: `.\Package_App.ps1` writes `Bridge_Warden.package`; `.\Unpack.ps1` rebuilds the folders on the other machine.
 
 ## Test it
+Pester 5 tests in `host\tests` run in CI (`.github/workflows/ci.yml`, Windows PowerShell 5.1 runners):
 ```powershell
-cd backend; uv run pytest
+Invoke-Pester host\tests
 ```
 
-## What's in it (first run)
+## What's in it
 | Path | What |
 |---|---|
-| `backend/warden/engine.py` | Governance core: 8-stage pipeline, conflicts, arbitration, escalations, monitors, operator controls |
-| `backend/warden/agents.py` | 5 simulated agents (rule-based), each limited to its scoped view of the COP |
-| `backend/warden/world.py` | Synthetic world: own ship, contacts, CPA/TCPA, engine, weather, scenario runner |
-| `backend/warden/ledger.py` | Append-only, hash-chained audit ledger (SQLite) |
-| `backend/warden/resources.py` | Edge budget meter (CPU, RAM, UI stream, intent size) |
-| `backend/config/` | `agents.yaml` (registry) and `policies.yaml`: add an agent or rule without code |
-| `backend/scenarios/full_demo.yaml` | The demo storyline |
+| `host/Start-BridgeWarden.ps1` | Host: PS 5.1 check, source rules, compile, port block, browser windows |
+| `host/Build.ps1` | Source rules (network and native code allowed in one named file each) and compiler settings |
+| `host/src/Engine.cs` | Governance core: 8-stage pipeline, conflicts, arbitration, escalations, monitors, operator controls |
+| `host/src/LlmAgent.cs`, `AgentTools.cs` | The AI agents (each a model role limited to its scoped view of the COP) and their calculator tools |
+| `host/src/World.cs`, `ShipSystems.cs` | Synthetic world: own ship, contacts, CPA/TCPA, weather, threats, power plant, damage control, scenario runner |
+| `host/src/Ledger.cs` | Append-only, hash-chained audit ledger (Windows' built-in SQLite) |
+| `host/src/Llm.cs`, `LlmClient.cs`, `LlmTasks.cs`, `Explain.cs` | The one AI wrapper: modes, cache, fallback text, streaming |
+| `host/src/App.cs`, `WebServer.cs` | API routes, tick loop, WebSocket feed, loopback HTTP server |
+| `host/src/Resources.cs` | Edge budget meter (CPU, RAM, UI stream, intent size) |
+| `backend/config/` | `agents.json` (registry) and `policies.json`: add an agent or rule without code |
+| `backend/scenarios/` | Scenario storylines (`full_demo.json`, `firefight.json`, `ops_normal.json`) |
+| `backend/skills/` | Each agent role's skill notes and lessons, sent to the model |
 | `frontend/` | `control.html` (Warden Control) and `index.html` (main app); no build step |

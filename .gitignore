@@ -14,3 +14,8 @@ dist/
 **/.venv/
 __pycache__/
 .pytest_cache/
+
+# C# host runtime output
+challenges/ai-automated-systems/logs/
+challenges/ai-automated-systems/temp/
+challenges/ai-automated-systems/host/.pid
