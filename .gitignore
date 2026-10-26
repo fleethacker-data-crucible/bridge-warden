@@ -1,0 +1,9 @@
+# Secrets - never commit
+**/secrets.json
+**/.env
+**/.env.*
+
+# Build / runtime output
+bin/
+node_modules/
+dist/
