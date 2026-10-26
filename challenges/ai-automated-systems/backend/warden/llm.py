@@ -41,7 +41,10 @@ def _load_dotenv() -> None:
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"'))
+                v = v.strip()
+                if not v.startswith('"'):
+                    v = v.split(" #", 1)[0].split("\t#", 1)[0].strip()   # inline comment, as in .env.example
+                os.environ.setdefault(k.strip(), v.strip('"'))
 
 
 _load_dotenv()

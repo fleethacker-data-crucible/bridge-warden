@@ -4,13 +4,31 @@
 # Opens Warden Control and the main app as their own Chrome app-mode windows
 # (dedicated profile, no tabs or address bar). Falls back to the default browser.
 # Ctrl+C stops the server.
+# Python: config.json next to this script ({ "python": "C:\\...\\python.exe" }, written by Unpack.ps1) runs the
+# server with that python.exe. No config.json, or a blank path, runs it with uv.
 param([switch]$Edge, [int]$Port = 8000)
 $env:PROFILE = if ($Edge) { 'edge' } else { 'demo' }
 $backend = Join-Path $PSScriptRoot 'backend'
 Set-Location $backend
-uv sync -q
 
-$server = Start-Process uv -ArgumentList 'run', 'uvicorn', 'warden.main:app', '--host', '127.0.0.1', '--port', $Port `
+$config = Join-Path $PSScriptRoot 'config.json'
+$python = if (Test-Path $config) { (Get-Content $config -Raw | ConvertFrom-Json).python } else { '' }
+if ($python) {
+    if (-not (Test-Path $python)) { Write-Error "python.exe not found at '$python'. Fix the path in $config"; exit 1 }
+    & $python -c "import fastapi, uvicorn, pydantic, yaml, psutil, httpx" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error ("'$python' is missing the app's packages. Install them once with:`n" +
+                     "  .\Unpack.ps1 -InstallDeps   (from the folder holding the package), or`n" +
+                     "  & '$python' -m pip install fastapi uvicorn pydantic pyyaml psutil websockets httpx")
+        exit 1
+    }
+    $exe, $serverArgs = $python, @('-m', 'uvicorn')
+} else {
+    uv sync -q
+    $exe, $serverArgs = 'uv', @('run', 'uvicorn')
+}
+
+$server = Start-Process $exe -ArgumentList ($serverArgs + @('warden.main:app', '--host', '127.0.0.1', '--port', $Port)) `
     -WorkingDirectory $backend -NoNewWindow -PassThru
 
 # Wait until the server answers, so the windows never load a dead page.

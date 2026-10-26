@@ -176,3 +176,18 @@ def test_log_row_has_timings_but_no_text_or_thoughts(monkeypatch):
     llm.set_logger(rows.append)
     llm.run("explain_intent", SAMPLE["explain_intent"])
     assert "text" not in rows[0] and "thoughts" not in rows[0] and rows[0]["prompt_chars"] > 0
+
+
+def test_dotenv_strips_inline_comments(tmp_path, monkeypatch):
+    """backend/.env copied from .env.example keeps its inline comments; values must not include them."""
+    (tmp_path / "backend").mkdir()
+    (tmp_path / "backend" / ".env").write_text('BW_T_NUM=45   # seconds\nBW_T_URL=http://x/v1\t# tab\nBW_T_Q="a # b"\n',
+                                               encoding="utf-8")
+    monkeypatch.setattr(llm, "BACKEND", tmp_path / "backend")
+    for k in ("BW_T_NUM", "BW_T_URL", "BW_T_Q"):
+        monkeypatch.delenv(k, raising=False)
+    llm._load_dotenv()
+    import os
+    assert (os.environ["BW_T_NUM"], os.environ["BW_T_URL"], os.environ["BW_T_Q"]) == ("45", "http://x/v1", "a # b")
+    for k in ("BW_T_NUM", "BW_T_URL", "BW_T_Q"):
+        monkeypatch.delenv(k)
