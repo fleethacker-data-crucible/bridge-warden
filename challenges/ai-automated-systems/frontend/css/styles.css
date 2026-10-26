@@ -292,3 +292,5 @@ button { font-family: var(--font-ui); }
 .nav-cop [stroke-dasharray] { stroke-dasharray: 6 4 !important; }   /* dashes in screen px, to match the fixed-width lines */
 /* Ship Systems and Damage Control pictures: one text size, no bold (overrides the per-element sizes in cops.js). */
 .syscop text, .dccop text { font-size: 8.5px !important; font-weight: 400 !important; }
+.llm-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.llm-row .btn { height: 30px; }

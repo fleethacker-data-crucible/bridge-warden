@@ -266,6 +266,31 @@ namespace BridgeWarden
             return id;
         }
 
+        // GET <base_url>/models (OpenAI-compatible): every model id the server lists, in its order. For the model
+        // drop-down in Warden Control. Same endpoint rules as a model call: loopback, or https with a key.
+        public static List<string> ListModels(string baseUrl, string apiKey)
+        {
+            Dictionary<string, object> s = Settings();
+            s["base_url"] = (baseUrl ?? "").Trim().TrimEnd('/');
+            s["api_key"] = apiKey ?? "";
+            CheckEndpoint(s);
+            string body;
+            int status;
+            using (LlmClient.Response r = LlmClient.Get(S(s, "base_url") + "/models", Bearer(s), 5.0))
+            {
+                status = r.status;
+                body = r.ReadToEnd();
+            }
+            if (status >= 400) throw new InvalidOperationException("HTTP " + status + " from " + S(s, "base_url") + "/models");
+            List<string> ids = new List<string>();
+            foreach (object m in Py.ListOrEmpty(Py.Get(Py.DictOrEmpty(Json.Parse(body)), "data")))
+            {
+                string id = Py.StrOr(Py.Get(Py.DictOrEmpty(m), "id"), "");
+                if (id.Length > 0 && !ids.Contains(id)) ids.Add(id);
+            }
+            return ids;
+        }
+
         // Thought text in a streamed delta: reasoning_content (LM Studio, DeepSeek, vLLM), reasoning (OpenRouter),
         // or Gemini's include_thoughts parts, which arrive as content flagged extra_content.google.thought.
         public static string ThoughtOf(Dictionary<string, object> delta)

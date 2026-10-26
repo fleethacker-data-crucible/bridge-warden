@@ -225,6 +225,8 @@ namespace BridgeWarden
             string[] p = path.Trim('/').Split('/');      // "api", ...
             int n = p.Length;
             bool get = method == "GET", post = method == "POST";
+            // Outside the gate: a slow provider must never stall the tick loop.
+            if (post && path == "/api/llm/models") return LlmModels(body);
             lock (_gate)
             {
                 if (get && path == "/api/state") return FullState();
@@ -360,6 +362,20 @@ namespace BridgeWarden
             Llm.SetEndpoint(url, key.Length > 0 ? key : null, model, effort, Py.Truthy(Py.Get(body, "include_thoughts")));
             Emit("info", "warden", "AI model server set to " + url + " (" + (model.Length > 0 ? model : "auto model") + ") by " + Operator);
             return Py.D("ok", true, "base_url", url, "model", model);
+        }
+
+        // The models a provider lists at <base_url>/models, for the model drop-down. POST so a key never goes in a URL.
+        // A blank key reuses the saved key ONLY for the saved URL: a typed-in URL never receives the saved key.
+        object LlmModels(Dictionary<string, object> body)
+        {
+            string url = Py.Str(Required(body, "base_url")).Trim().TrimEnd('/');
+            string key = Py.StrOr(Py.Get(body, "api_key"), "").Trim();
+            Dictionary<string, object> saved = Llm.Settings();
+            if (key.Length == 0 && url == Py.StrOr(Py.Get(saved, "base_url"), "")) key = Py.StrOr(Py.Get(saved, "api_key"), "");
+            List<string> models;
+            try { models = Llm.ListModels(url, key); }
+            catch (Exception ex) { throw new HttpError(502, ex.Message); }
+            return Py.D("models", models, "current", Py.StrOr(Py.Get(saved, "local_model"), ""));
         }
 
         // The main window reports which COP is on screen. Only that COP's world and agents run.
