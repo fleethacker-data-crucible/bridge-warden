@@ -6,7 +6,7 @@
     --log-bg: #121212;
     --border: #333;
     --text: #e8e8e8;
-    --muted: #8b8b8b;
+    --muted: #aaaaaa;
     --accent: #f5b301;
     --ok: #4ade80;
     --warn: #fbbf24;
@@ -73,7 +73,7 @@ textarea { font-family: var(--mono); font-size: 12px; resize: vertical; }
 .page-title { font-weight: 600; font-size: 15px; }
 .topbar-stats { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 .topbar-stats b { color: var(--text); font-weight: 500; }
-.sep { color: #444; }
+.sep { color: #aaaaaa; }
 
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #555; margin-right: 6px; }
 .dot.ok { background: var(--ok); }
@@ -97,7 +97,7 @@ textarea { font-family: var(--mono); font-size: 12px; resize: vertical; }
 .log-actions input { padding: 0; vertical-align: middle; }
 .log-body { flex: 1; overflow-y: auto; font-family: var(--mono); font-size: 12px; padding: 6px 14px; }
 .log-line { white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
-.log-line .t { color: #666; margin-right: 8px; }
+.log-line .t { color: #aaaaaa; margin-right: 8px; }
 .log-line .lvl { display: inline-block; width: 44px; font-weight: 600; }
 .log-line.info .lvl { color: var(--info); }
 .log-line.ok .lvl { color: var(--ok); }
@@ -136,7 +136,7 @@ textarea { font-family: var(--mono); font-size: 12px; resize: vertical; }
 .url-line { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 14px; word-break: break-all; }
 .form-grid { display: grid; grid-template-columns: 160px 1fr; gap: 10px 14px; align-items: center; margin-bottom: 14px; }
 .form-grid label { color: var(--muted); font-size: 13px; }
-.form-grid .hint { grid-column: 2; color: #666; font-size: 12px; margin-top: -6px; }
+.form-grid .hint { grid-column: 2; color: #aaaaaa; font-size: 12px; margin-top: -6px; }
 
 .resp-meta { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
 .resp-meta .code.ok { color: var(--ok); } .resp-meta .code.err { color: var(--err); }

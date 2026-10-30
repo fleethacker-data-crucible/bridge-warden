@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "bridge-warden",
-      "runtimeExecutable": "C:/Users/christopher.staggs/.local/bin/uv.exe",
-      "runtimeArgs": ["run", "--project", "D:/cdao-maximus/challenges/ai-automated-systems/backend", "--directory", "D:/cdao-maximus/challenges/ai-automated-systems/backend", "uvicorn", "warden.main:app", "--host", "127.0.0.1", "--port", "8000"],
-      "port": 8000
+      "runtimeExecutable": "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
+      "runtimeArgs": ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", "D:/cdao-maximus/challenges/ai-automated-systems/host/Start-BridgeWarden.ps1", "-NoBrowser", "-Port", "8774"],
+      "port": 8774
     }
   ]
 }

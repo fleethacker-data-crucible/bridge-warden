@@ -1,6 +1,0 @@
-# Default: normal operations. Nothing happens on its own; the presenter drives
-# every event from the Inject buttons in Warden Control.
-name: ops_normal
-events:
-  - t: 0
-    phase: Ops normal

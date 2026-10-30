@@ -1,0 +1,46 @@
+{
+  "min_cpa_nm": 1.0,
+  "cpa_buffer_nm": 0.3,
+  "critical_cpa_nm": 0.5,
+  "big_turn_deg": 30,
+  "engine_temp_warn_c": 95,
+  "engine_temp_crit_c": 105,
+  "escalation_timeout_s": 120,
+  "auto_quarantine_violations": 3,
+  "violation_window_s": 60,
+  "oscillation_flips": 3,
+  "safe_speed_kn": 6,
+  "require_llm_provenance": true,
+  "system_check_interval_s": 120,
+  "system_check_timeout_s": 120,
+  "system_check_retry_s": 30,
+  "system_check_max_missed": 2,
+  "deny": [
+    {
+      "id": "ENERGY_NO_PROPULSION_CONTROL",
+      "role": "energy",
+      "targets": [
+        "rudder"
+      ],
+      "severity": "high",
+      "reason": "Energy agents may never command the rudder."
+    }
+  ],
+  "rules": [
+    {
+      "id": "MIN_CPA",
+      "severity": "critical",
+      "description": "Predicted CPA must stay at or above min_cpa_nm."
+    },
+    {
+      "id": "BIG_TURN_NEEDS_HUMAN",
+      "severity": "medium",
+      "description": "Course changes above big_turn_deg need operator approval."
+    },
+    {
+      "id": "IRREVERSIBLE_NEEDS_HUMAN",
+      "severity": "high",
+      "description": "Irreversible actions need operator approval."
+    }
+  ]
+}

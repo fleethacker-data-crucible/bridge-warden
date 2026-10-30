@@ -131,11 +131,46 @@ document.querySelectorAll('[data-inject]').forEach(b => b.addEventListener('clic
 
 // AI model server: fields fill once from the server, then belong to the operator.
 let llmFilled = false;
+
+// Model drop-down: "auto" first, then what the server lists. A chosen model the server doesn't list stays, marked.
+function setModelOptions(models, chosen) {
+    const sel = $('llm-model');
+    const keep = chosen !== undefined ? chosen : sel.value;
+    const list = models.slice();
+    const opts = [`<option value="">Model: auto</option>`].concat(list.map(m => `<option value="${esc(m)}">${esc(m)}</option>`));
+    if (keep && !list.includes(keep)) opts.push(`<option value="${esc(keep)}">${esc(keep)} (not listed)</option>`);
+    sel.innerHTML = opts.join('');
+    sel.value = keep || '';
+}
+
+// Asks the server at the URL box for its models (GET <url>/models via Warden; the key never goes in a URL).
+async function loadModels() {
+    const info = $('llm-models-info'), btn = $('llm-refresh');
+    const url = $('llm-url').value.trim();
+    if (!url) return;
+    btn.disabled = true;
+    info.textContent = 'Loading models...';
+    try {
+        const r = await BW.api('POST', '/api/llm/models', { base_url: url, api_key: $('llm-key').value });
+        setModelOptions(r.models);
+        info.textContent = r.models.length ? `${r.models.length} model${r.models.length === 1 ? '' : 's'} at this server.`
+                                           : 'The server lists no models (none loaded?).';
+    } catch (e) {
+        let detail = e.message;
+        try { detail = JSON.parse(e.message.replace(/^\d+ /, '')).detail || detail; } catch (_) { }
+        info.textContent = `Couldn't load models: ${detail}`;
+    } finally {
+        btn.disabled = false;
+    }
+}
+$('llm-refresh').addEventListener('click', loadModels);
+$('llm-url').addEventListener('change', loadModels);
 BW.onState((s) => {
     if (llmFilled || !s) return;
     llmFilled = true;
     $('llm-url').value = s.server.llm.base_url;
-    $('llm-model').value = s.server.llm.local_model;
+    setModelOptions([], s.server.llm.local_model);
+    loadModels();
     $('llm-effort').value = s.server.llm.reasoning_effort;
     $('llm-thoughts').checked = s.server.llm.include_thoughts;
 });

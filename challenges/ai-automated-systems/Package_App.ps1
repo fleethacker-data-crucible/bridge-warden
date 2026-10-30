@@ -1,8 +1,8 @@
-# Packages Bridge Warden into one text file: every app file → .tar.gz → base64 → Bridge_Warden.package
+# Packages Bridge Warden into one text file: every app file -> .tar.gz -> base64 -> Bridge_Warden.package
 #   .\Package_App.ps1                       writes Bridge_Warden.package next to this script
 #   .\Package_App.ps1 -Out D:\x.package     somewhere else
-# Never packaged: keys (.env), the local ledger (backend/data), the Python environment and caches, old packages,
-# config.json (each machine sets its own Python path) and an unpacked Bridge_Warden folder.
+# Never packaged: keys (.env), the local ledger (backend/data), host logs and temp files, old packages and an
+# unpacked Bridge_Warden folder.
 # To unpack: .\Unpack.ps1 (see that script). By hand:
 #   [IO.File]::WriteAllBytes("bw.tar.gz", [Convert]::FromBase64String((Get-Content Bridge_Warden.package -Raw)))
 #   tar -xzf bw.tar.gz
@@ -11,10 +11,10 @@ param([string]$Out = (Join-Path $PSScriptRoot 'Bridge_Warden.package'))
 $ErrorActionPreference = 'Stop'
 
 $root = $PSScriptRoot
-# Bridge_Warden is Unpack.ps1's default output folder; config.json is each machine's own Python path.
-$skipDirs = @('.venv', 'data', '__pycache__', '.pytest_cache', '.git', 'node_modules', 'Bridge_Warden')
+# Bridge_Warden is Unpack.ps1's default output folder.
+$skipDirs = @('data', '.git', 'node_modules', 'Bridge_Warden', 'logs', 'temp')
 $skipFile = { param($f) $f.Name -eq '.env' -or ($f.Name -like '.env.*' -and $f.Name -ne '.env.example') -or
-                        $f.Extension -in '.package', '.gz', '.pyc' -or $f.FullName -eq (Join-Path $root 'config.json') }
+                        $f.Extension -in '.package', '.gz' -or $f.Name -eq '.pid' }
 
 $files = Get-ChildItem -Path $root -Recurse -File -Force | Where-Object {
     $rel = $_.FullName.Substring($root.Length + 1)
