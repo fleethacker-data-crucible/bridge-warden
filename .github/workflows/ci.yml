@@ -34,9 +34,13 @@ jobs:
         run: $PSVersionTable | Format-Table -AutoSize
       - name: Install Pester 5 and PSScriptAnalyzer (CurrentUser)
         run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force -Confirm:$false | Out-Null
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module Pester -MinimumVersion 5.5.0 -MaximumVersion 5.99.99 -Scope CurrentUser -Force -SkipPublisherCheck
-          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          if (-not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -eq [version]'5.7.1' })) {
+            Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Scope CurrentUser -Force }
       - name: Parse check (PS 5.1 parser)
         run: |
           # Class files that inherit a type from another file (e.g. keystone Providers\*Provider.ps1

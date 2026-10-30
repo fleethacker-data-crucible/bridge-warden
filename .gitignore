@@ -16,3 +16,7 @@ dist/
 challenges/ai-automated-systems/logs/
 challenges/ai-automated-systems/temp/
 challenges/ai-automated-systems/host/.pid
+
+# Generated distribution packages belong in release assets, not source history.
+**/Bridge_Warden.package
+**/Bridge_Warden.package.*
