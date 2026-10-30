@@ -44,8 +44,8 @@ button { font-family: var(--font-ui); }
 .btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .btn:disabled { background: var(--grey-btn); color: var(--text-dim); cursor: default; }
 .btn.primary { background: var(--blue-fill); } .btn.primary:hover { background: var(--blue-hover); }
-.btn.success { background: var(--green); } .btn.success:hover { background: var(--green-hover); }
-.btn.warn { background: var(--orange); } .btn.warn:hover { background: var(--orange-hover); }
+.btn.success { background: var(--green); color: #071a26; } .btn.success:hover { background: var(--green-hover); }
+.btn.warn { background: var(--orange); color: #071a26; } .btn.warn:hover { background: var(--orange-hover); }
 .btn.danger { background: var(--red-fill); } .btn.danger:hover { background: var(--red-hover); }
 .btn.lg { height: 32px; }
 .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
