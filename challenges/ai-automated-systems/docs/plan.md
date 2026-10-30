@@ -101,9 +101,9 @@ The Open Innovation track requires edge AI "under minimal power and bandwidth." 
 | **Bandwidth** | Zero external network in the core loop. Compact JSON Intents (orjson) on the bus; UI gets throttled deltas over WebSocket. Off-ship reporting is optional: ledger exported as compressed batches when a link exists (store-and-forward). | Target: 0 bytes off-ship required; Intent ≤ 1 KB; UI stream ≤ 50 KB/s | Bytes/s counters on the bus and WS (8.11); demo with network unplugged |
 | **Disconnected (DDIL)** | Everything runs locally: bundled fonts, SVG + GeoJSON map (no tile server), `LLM_MODE=cached` or a local small model. | Fully functional with no network | Demo run in airplane mode (Section 12) |
 | **Cybersecurity** | Agents are authenticated (registry + heartbeat; stretch: per-agent signed Intents). Least-privilege scopes and tools. Tamper-evident hash-chained ledger. No inbound internet; keys only in `.env`. Rogue-agent scenario demonstrates containment. | No agent can act outside its grant | Rogue scenario + policy unit/property tests (Section 11) |
-| **Portability** | Python + static web UI; runs on Windows or Linux; one start command; no Docker required. | Fresh machine to running demo in < 15 min | Timed install on a second laptop |
+| **Portability** | Windows PowerShell 5.1 compiles the C# host at start + static web UI; nothing to install, no admin, one start command (`run.bat`). | Fresh machine to running demo in < 15 min | Timed install on a second laptop |
 | **Shipboard constraints** | Single box, no cloud, dark UI for night watches, two-window layout for bridge displays, adapters for vendor agents. | | Demo on the target hardware |
-| **Sustainment** | Policies in readable YAML (editable without code changes); one adapter file per new agent or data source; automated test suite. | New agent added via config + adapter only | Add an agent live during the demo (stretch) |
+| **Sustainment** | Policies in readable JSON (editable without code changes); one adapter file per new agent or data source; automated test suite. | New agent added via config + adapter only | Add an agent live during the demo (stretch) |
 | **Data classification** | Synthetic data only, generated from seeds. No CUI, PII or real ship data. | Unclassified | `sim/generator.py`; [disclosure.md](disclosure.md) |
 
 ## 7. Judging & ROI Alignment
@@ -127,20 +127,22 @@ The Open Innovation track requires edge AI "under minimal power and bandwidth." 
 
 | Layer | Choice | Why |
 |---|---|---|
-| Backend | Python 3.12 + FastAPI + asyncio | Fast to build, async tick loop |
+| Backend | C# 5 compiled at start by Windows PowerShell 5.1 (`Add-Type`), `HttpListener` on loopback (as built after the port; see note below) | Team stack: no installs, no admin, offline |
 | Event bus | In-process asyncio pub/sub | No infrastructure |
-| Models | Pydantic v2 | Typed messages; JSON Schema for free |
+| Models | C# model classes with the same JSON field names (`host/src/Models.cs`) | Typed messages, unchanged UI contract |
 | Storage | SQLite (append-only, hash-chained ledger) + in-memory state | Zero setup |
-| Policies | YAML rules + small Python evaluator | Readable for judges |
-| LLM | Any provider through the wrapper `warden/llm.py` (spec: `docs/llm-wrapper.md`); tasks in `warden/llm_tasks.py` | Conflict summaries, escalation summaries, intent explanations |
+| Policies | JSON rules (`backend/config/policies.json`) + the C# engine | Readable for judges |
+| LLM | Any OpenAI-compatible provider through the wrapper `host/src/Llm.cs` (spec: `docs/llm-wrapper.md`); tasks in `host/src/LlmTasks.cs`; default local phoenix-lai | Conflict summaries, escalation summaries, intent explanations |
 | Frontend | React + TypeScript + Vite + Tailwind | Fast, matches the look easily |
 | State | Zustand (live stream) + React Query (REST) | Simple |
 | Realtime | WebSocket `/ws` | Push all events to the UI |
 | Map | React-Leaflet with custom dark styling (or SVG) | COP display |
 | Charts | Recharts | Sparklines, metrics |
-| Tests | pytest, Vitest, Playwright | Unit → scenario → end-to-end |
+| Tests | Pester 5 on the PS 5.1 CI runners (`host/tests`, `.github/workflows/ci.yml`) | Unit → scenario → end-to-end |
 
 > **As built (first run, 2026-10-25, pre-event):** the frontend is **plain HTML/CSS/JS served directly by FastAPI**, not React/Vite. There's no build step, no Node.js at runtime and no frontend packages, which fits the edge power budget (Section 6) and reuses the team's existing fonts and style tokens. State is one WebSocket snapshot per tick. The COP is inline SVG (no tile server). AI text goes through `warden/llm.py`, built to `docs/llm-wrapper.md`: modes live/cached/local/off with fallback order, named tasks with rule-text fallbacks in `warden/llm_tasks.py`, a committed cache in `backend/fixtures/llm_cache.json`, an `LLM_CALL` ledger row per call, and a source tag on every AI text in the UI. Default `LLM_MODE=cached`. Live and local calls run off the governance loop, so decisions never wait on AI. LiteLLM is optional and only imported inside the wrapper; local mode talks to Ollama over HTTP. Tests are pytest only. Code lives in `backend/` (`warden/` package, `config/`, `scenarios/`, `tests/`) and `frontend/` (`index.html` main app, `control.html` Warden Control). Revisit React only if UI complexity demands it.
+
+> **As built (C# port, 2026-10-26, pre-event):** the Python backend was replaced by a 1:1 C# port in `host/src` (17 files), compiled at start by Windows PowerShell 5.1 with `Add-Type` (C# 5, framework assemblies only), per the team tech-stack baseline. `HttpListener` on 127.0.0.1/localhost with Host/Origin checks, FleetHacker `/__fleethacker/id` + shutdown, port block 8774-8776 (provisional). Ledger on Windows' built-in SQLite (`winsqlite3.dll`). Config and scenarios moved from YAML to JSON. AI defaults to local phoenix-lai (`127.0.0.1:1234`, model `phoenixlai`). Each capability that reaches outside (HTTP listener, model calls, native SQLite) is allowed in exactly one named file, checked on every start (`host/Build.ps1`). Tests: Pester 5 in CI. No Python remains. The Python names elsewhere in this plan are the original design.
 
 > **As built (second run, ship-centered):** Warden now governs **10 agents across three operating pictures**.
 > - **Navigation COP:** 20 nm, with a hard **10 nm EMCON radius**, hostile contacts, detection and attack risk, and a prediction of when the hostile reaches the radius and the detection risk by then.
@@ -1003,6 +1005,8 @@ expect:
 ## 15. Setup & Pre-Event Checklist
 
 ### 15.1 Dev Machine Setup (What to Install)
+
+> **Superseded by the C# port (2026-10-26):** Bridge Warden no longer uses Python, uv, Node.js or pnpm. It needs only Windows with Windows PowerShell 5.1 (built in), Chrome or Edge, and Git for development. The list below is the original pre-build plan, kept for the record.
 
 Assumes **Windows 10/11** (matches your screenshots). Mac/Linux equivalents are noted where they differ.
 
