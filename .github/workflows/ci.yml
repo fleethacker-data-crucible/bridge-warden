@@ -23,7 +23,7 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows, powershell51, headless]
     defaults:
       run:
         # Explicit -ExecutionPolicy Bypass -File: the default "powershell -command . {0}" wrapper fails on runners with a Restricted policy (PSSecurityException).
