@@ -177,6 +177,7 @@ button { font-family: var(--font-ui); }
 .at-idle { background: var(--state-off); } .at-active { background: var(--green); } .at-escalated { background: var(--badge-yellow); color: #1b1b1b; }
 .at-paused { background: var(--grey-btn); color: var(--text-muted); } .at-quarantined { background: var(--red-fill); }
 .hold-btn { position: relative; width: 100%; height: 54px; border: 0; border-radius: var(--radius-sm); color: #fff; font-weight: 700; font-size: 17px; cursor: pointer; overflow: hidden; margin-bottom: 24px; user-select: none; }
+.hold-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .hold-btn .fill { position: absolute; inset: 0; width: 0; background: rgba(255,255,255,.25); }
 .hold-btn .cap { position: relative; display: block; } .hold-btn .sub { position: relative; display: block; font-size: 12.5px; font-weight: 400; opacity: .85; margin-top: 2px; }
 .hold-btn.red { background: var(--red-fill); } .hold-btn.green { background: var(--green); }
