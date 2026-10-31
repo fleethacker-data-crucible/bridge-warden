@@ -28,16 +28,16 @@
   </div>
 </header>
 <div class="shell">
-  <nav class="sidebar">
+  <nav class="sidebar" aria-label="Primary">
     <h2>Menu</h2>
-    <div class="nav-item active" data-page="overview"><span class="icon">◎</span>Navigation</div>
-    <div class="nav-item" data-page="systems"><span class="icon">⌁</span>Ship Systems</div>
-    <div class="nav-item" data-page="dc"><span class="icon">⛑</span>Damage Control</div>
-    <div class="nav-item" data-page="agents"><span class="icon">▣</span>Agents<span class="count" id="n-agents"></span></div>
-    <div class="nav-item" data-page="intents"><span class="icon">⇢</span>Intents<span class="count" id="n-intents"></span></div>
-    <div class="nav-item" data-page="conflicts"><span class="icon">⚡</span>Conflicts<span class="count" id="n-conflicts"></span></div>
-    <div class="nav-item" data-page="escalations"><span class="icon">⚑</span>Escalations<span class="count" id="n-esc"></span></div>
-    <div class="nav-item" data-page="ledger"><span class="icon">≡</span>Ledger</div>
+    <button type="button" class="nav-item active" data-page="overview" aria-current="page"><span class="icon" aria-hidden="true">◎</span>Navigation</button>
+    <button type="button" class="nav-item" data-page="systems"><span class="icon" aria-hidden="true">⌁</span>Ship Systems</button>
+    <button type="button" class="nav-item" data-page="dc"><span class="icon" aria-hidden="true">⛑</span>Damage Control</button>
+    <button type="button" class="nav-item" data-page="agents"><span class="icon" aria-hidden="true">▣</span>Agents<span class="count" id="n-agents"></span></button>
+    <button type="button" class="nav-item" data-page="intents"><span class="icon" aria-hidden="true">⇢</span>Intents<span class="count" id="n-intents"></span></button>
+    <button type="button" class="nav-item" data-page="conflicts"><span class="icon" aria-hidden="true">⚡</span>Conflicts<span class="count" id="n-conflicts"></span></button>
+    <button type="button" class="nav-item" data-page="escalations"><span class="icon" aria-hidden="true">⚑</span>Escalations<span class="count" id="n-esc"></span></button>
+    <button type="button" class="nav-item" data-page="ledger"><span class="icon" aria-hidden="true">≡</span>Ledger</button>
     <div class="foot"><button class="btn" style="width:100%" onclick="window.open('/control.html','bw-control')">Open Warden Control</button></div>
   </nav>
   <div class="with-drawer">
@@ -45,6 +45,7 @@
     <aside class="drawer" id="drawer"></aside>
   </div>
 </div>
+<div class="sr-only" id="page-status" role="status" aria-live="polite"></div>
 <script src="js/common.js"></script>
 <script src="js/notify.js"></script>
 <script src="js/oversight.js"></script>

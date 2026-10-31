@@ -69,7 +69,12 @@ function renderShell(s) {
 }
 
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(x => x.classList.toggle('active', x === n));
+    document.querySelectorAll('.nav-item').forEach(x => {
+        x.classList.toggle('active', x === n);
+        if (x === n) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
+    });
+    // Keyboard focus stays on the button; the live region tells screen readers which page opened.
+    $('page-status').textContent = `${[...n.childNodes].filter(c => c.nodeType === 3).map(c => c.textContent).join('')} page`;
     ui.page = n.dataset.page;
     Notify.setScope(PAGE_DOMAIN[ui.page] || null);
     if (PAGE_DOMAIN[ui.page]) BW.api('POST', `/api/view/${PAGE_DOMAIN[ui.page]}`).catch(() => {});   // only this COP runs

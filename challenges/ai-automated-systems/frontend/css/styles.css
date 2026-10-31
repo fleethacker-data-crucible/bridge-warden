@@ -38,6 +38,9 @@ button { font-family: var(--font-ui); }
 .kpi { text-align: right; } .kpi .l { font-size: 14px; color: var(--text-muted); } .kpi .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .badge-unclass { margin-left: 8px; }
 
+/* Visually hidden text for screen readers (live regions, hints) */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* Buttons */
 .btn { height: 26px; padding: 0 14px; border: 0; border-radius: var(--radius-sm); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; background: var(--grey-btn); transition: background .14s ease-out; white-space: nowrap; }
 .btn:hover { background: var(--grey-btn-hover); }
@@ -67,8 +70,9 @@ button { font-family: var(--font-ui); }
 .shell { flex: 1; display: flex; min-height: 0; }
 .sidebar { width: 248px; flex: none; border-right: 1px solid var(--border); padding: 12px 8px; display: flex; flex-direction: column; background: var(--bg-app); }
 .sidebar h2 { font-size: 22px; font-weight: 700; margin: 4px 8px 14px; }
-.nav-item { height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: var(--radius-sm); font-weight: 600; color: var(--text); cursor: pointer; user-select: none; }
+.nav-item { font: inherit; width: 100%; border: 0; background: none; text-align: left; height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: var(--radius-sm); font-weight: 600; color: var(--text); cursor: pointer; user-select: none; }
 .nav-item:hover { background: var(--bg-row); }
+.nav-item:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .nav-item.active { background: var(--blue-fill); color: #fff; }
 .nav-item .count { margin-left: auto; font-size: 11px; font-family: var(--font-mono); }
 .nav-item .icon { width: 16px; text-align: center; opacity: .9; }
