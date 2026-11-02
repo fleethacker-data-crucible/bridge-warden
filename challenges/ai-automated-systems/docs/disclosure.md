@@ -12,4 +12,4 @@ Event rule 5: all tooling, models, datasets and external services must be disclo
 | Library | None: plain HTML/CSS/JS | — | Frontend (as built) |
 | Font | Exo 2, Syne Mono (bundled locally) | Open source (SIL OFL) | UI typography |
 | Library | Pester 5, PSScriptAnalyzer (CI runners only) | Open source | Tests and lint |
-| Tool | AI coding assistant (Claude Code) used to build the first-run prototype; others TBD | Ours | Development |
+| Tool | AI coding assistant used to build the first-run prototype; others TBD | Ours | Development |
