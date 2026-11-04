@@ -18,10 +18,12 @@ BeforeAll {
 }
 
 # Every test runs on the frozen fake clock (Py.FakeTime > 0), so promotions, heartbeats and halts age on demand.
-BeforeEach { [BridgeWarden.Py]::FakeTime = 1800000000.0 }
+# Pester 5 allows BeforeEach only inside a Describe, so each Describe sets it.
 AfterAll { [BridgeWarden.Py]::FakeTime = 0.0 }
 
 Describe 'Rank: base + ship condition + field promotion' {
+    BeforeEach { [BridgeWarden.Py]::FakeTime = 1800000000.0 }
+
     It 'cruising is base rank alone' {
         $S = New-BwSetup; $w = $S.Warden
         foreach ($a in $w.agents.Values) { Effective $w $a.identity.id | Should -Be $a.identity.priority }
@@ -92,6 +94,8 @@ Describe 'Rank: base + ship condition + field promotion' {
 }
 
 Describe 'Protocol agents: signed manifest and four-part contract' {
+    BeforeEach { [BridgeWarden.Py]::FakeTime = 1800000000.0 }
+
     It 'registers live, caps the base rank and joins the roster with no restart' {
         $S = New-BwSetup; $w = $S.Warden
         $n = $w.agents.Count
