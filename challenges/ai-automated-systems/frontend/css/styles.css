@@ -88,7 +88,7 @@ button { font-family: var(--font-ui); }
 .authsw { display: inline-flex; height: 26px; padding: 0; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; background: var(--bg-inset); cursor: pointer; font: 700 13px var(--font-ui); }
 .authsw span { padding: 0 14px; display: flex; align-items: center; color: var(--text-dim); letter-spacing: .06em; }
 .authsw.is-ask .ask { background: #d4a72c; color: #1a1400; }
-.authsw.is-act .act { background: var(--green); color: #fff; }
+.authsw.is-act .act { background: var(--green); color: #0b1a10; }   /* dark text: white on green is 2.8:1 */
 .agent.tier-decider { border-left: 3px solid var(--blue); margin-top: 6px; }
 .agent.tier-decider .nm { font-weight: 800; }
 .agent.tier-sub { margin-left: 16px; }

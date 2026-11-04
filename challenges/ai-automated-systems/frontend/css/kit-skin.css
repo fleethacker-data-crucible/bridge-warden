@@ -1,0 +1,52 @@
+/* Bridge Warden: FleetHacker UI Kit skin (org suite standard, edge-ops ui-kit v0.2.2, vendor/ui-kit).
+   Pattern: comms proposals/phoenix-fleet-skin.md. Every rule is scoped under html[data-skin="kit"], so it does
+   nothing until js/skin.js sets the attribute. Off ("classic") means Bridge Warden looks exactly as before.
+   Mostly variable swaps: Bridge Warden's own tokens point at the kit palette. Values are written out (not var() to
+   kit tokens) because several names collide (--border, --text, --blue, --radius) and Bridge Warden's unlayered
+   :root wins over the kit's @layer. Dark theme only: the COP pictures are drawn for a dark scope.
+   Removing the skin = deleting this file, js/skin.js and vendor/ui-kit. */
+html[data-skin="kit"] {
+  --bg-titlebar: #141413; --bg-app: #1a1a19; --bg-panel: #242422; --bg-inset: #141413;
+  --bg-tile: #242422; --bg-row: #2c2c2a; --bg-row-hover: #44433f; --bg-modal: #242422;
+  --scrim: rgba(0,0,0,.53);
+  --border: #3a3936; --border-strong: #7a7872;
+  --text: #ffffff; --text-muted: #9a988f; --text-dim: #9a988f;
+  /* Kit accent: #2f74c8 fills (white text 4.7:1), #5a9cec for text, links and focus. */
+  --blue: #5a9cec; --blue-fill: #2f74c8; --blue-hover: #3a80d4;
+  /* --green / --orange are used as text on the page and as fills under dark text (.btn.success, .btn.warn), so
+     they take the kit's light status colors; fills that carry white text are switched to kit fills below. */
+  --green: #4cc27f; --green-hover: #5fcc8e;
+  --orange: #d9b343; --orange-hover: #e2c060;
+  --red: #ff9090; --red-fill: #c93b3b; --red-hover: #b53434;
+  --grey-btn: #2c2c2a; --grey-btn-hover: #3a3936;
+  --logo-control: #c93b3b; --logo-app: #2f74c8;
+  --badge-green: #4cc27f; --badge-blue: #5a9cec; --badge-purple: #b58cf0;
+  --badge-yellow: #d9b343; --badge-red: #ff9090; --badge-grey: #9a988f;
+  --pct-low: #ff9090; --pct-mid: #d9b343; --pct-high: #4cc27f;
+  --log-time: #c3c2b7; --log-system: #ff8fbb; --log-engine: #6fd6e4; --log-ok: #4cc27f;
+  --log-warn: #d9b343; --log-error: #ff9090; --log-highlight-bg: #287a4c; --log-highlight-fg: #ffffff;
+  --state-off: #44433f;
+  --radius-xs: 3px; --radius-sm: 4px; --radius: 4px; --radius-lg: 6px;
+  --font-ui: "Exo 2", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Syne Mono", ui-monospace, Consolas, monospace;
+}
+/* Green / amber fills that carry white text use the kit's dark status fills (white >= 4.5:1). */
+html[data-skin="kit"] .at-active, html[data-skin="kit"] .hold-btn.green, html[data-skin="kit"] .n-success { background: #287a4c; }
+html[data-skin="kit"] .n-warn { background: #8a6d0c; }
+/* Kit focus ring on everything that takes keyboard focus (WCAG 2.4.7). */
+html[data-skin="kit"] :focus-visible { outline: 2px solid #5a9cec; outline-offset: 2px; }
+/* Name clash: the header logo is ".logo.app", and the kit's ".app" is its page-layout class (min-height: 100vh). */
+html[data-skin="kit"] .logo.app { min-height: 0; }
+/* SAFE-STOP / RESUME hold button: the kit's generic button rule (inline-flex row, 25px line box) and its ".sub"
+   (muted grey) would put the hint beside the label and grey it on the red fill. Keep the classic stacked layout
+   and white hint text. */
+html[data-skin="kit"] .hold-btn { display: inline-block; padding: 1px 6px; line-height: normal; }
+html[data-skin="kit"] .hold-btn .sub { color: #ffffff; font-size: 12.5px; }
+/* Kit brand gold marks the app title; the classic look keeps plain white. */
+html[data-skin="kit"] .title { color: #e8c15a; }
+
+/* The skin switch (added to the header by js/skin.js). Styled in both looks so it reads as one control. */
+.skin-toggle { height: 32px; min-width: 32px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--bg-row); color: var(--text); font: 600 13px var(--font-ui); cursor: pointer; white-space: nowrap; }
+.skin-toggle:hover { background: var(--bg-row-hover); }
+.skin-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
