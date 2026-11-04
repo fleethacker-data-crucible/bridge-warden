@@ -57,6 +57,10 @@ namespace BridgeWarden
         public string description = "";
         public string behavior = "";
         public string cop = "nav";             // nav | systems | dc: the agent only runs while its COP is on screen
+        // "decider" (one model per picture: TAO, EOOW, DCO) or "sub" (a lookout, behavior "lookout", that reports alerts to
+        // its parent decider and carries out the option the decider picks). NavCell.cs.
+        public string tier = "sub";
+        public string parent;
 
         // AgentIdentity(**a) from config\agents.json
         public static AgentIdentity FromDict(Dictionary<string, object> a)
@@ -78,6 +82,8 @@ namespace BridgeWarden
             i.description = Py.StrOr(Py.Get(a, "description"), i.description);
             i.behavior = Py.StrOr(Py.Get(a, "behavior"), i.behavior);
             i.cop = Py.StrOr(Py.Get(a, "cop"), i.cop);
+            i.tier = Py.StrOr(Py.Get(a, "tier"), i.tier);
+            i.parent = Py.Get(a, "parent") as string;
             return i;
         }
 
@@ -186,7 +192,7 @@ namespace BridgeWarden
         {
             { "set_heading", "nav" }, { "set_speed", "nav" }, { "set_emcon", "nav" }, { "activate_defense", "nav" },
             { "close_breaker", "systems" }, { "open_breaker", "systems" },
-            { "dispatch_team", "dc" }, { "set_gq", "global" }, { "engage_target", "nav" },
+            { "dispatch_team", "dc" }, { "set_gq", "global" }, { "engage_target", "nav" }, { "rig_casualty_power", "systems" },
         };
         static readonly Dictionary<string, string> SourceDomain = new Dictionary<string, string>
         {
@@ -204,7 +210,7 @@ namespace BridgeWarden
         }
     }
 
-    // agents.py: what each agent may SEE. Agents decide nothing in C#; every decision comes from the model.
+    // What a model agent may SEE (its read_scopes). The C# lookouts read the whole picture; they report, they do not choose.
     public static class Scopes
     {
         static readonly Dictionary<string, string[]> ScopeKeys = new Dictionary<string, string[]>

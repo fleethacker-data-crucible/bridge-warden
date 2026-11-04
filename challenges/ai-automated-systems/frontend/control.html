@@ -33,7 +33,7 @@
       <div><div class="l">Warden Core</div><div class="status-word" id="core">–</div></div>
       <div><div class="l">Scenario</div><div class="status-word" id="scen">–</div></div>
       <div><div class="l">Next System Check</div><div class="v mono" id="nextcheck">–</div></div>
-      <div><div class="l">Time Scale</div><div class="v mono" id="tscale">1×</div></div>
+      <div><div class="l">Sim Speed</div><div class="v" id="tscale">1x</div></div>
       <div><div class="l">LLM Agents</div><div class="status-word" id="llm">–</div></div>
       <div><div class="l">EMCON</div><div class="status-word" id="emcon">–</div></div>
     </div>
@@ -47,22 +47,20 @@
     </div>
     <div class="agent-tiles" id="tiles"></div>
 
-    <button type="button" class="hold-btn red" id="hold" aria-describedby="hold-hint"><span class="fill"></span><span class="cap" id="hold-cap">SAFE-STOP</span><span class="sub">Hold 2s to engage</span></button>
-    <span class="sr-only" id="hold-hint">Keyboard: hold Enter or Space for 2 seconds to engage SAFE-STOP. Release or press Escape to cancel.</span>
-    <div class="sr-only" id="hold-status" role="status" aria-live="polite"></div>
+    <button class="hold-btn red" id="hold"><span class="fill"></span><span class="cap" id="hold-cap">SAFE-STOP</span><span class="sub">Hold 2s to engage</span></button>
 
     <div class="label blue">Governance Actions</div>
     <div class="grid2">
       <button class="btn primary" data-act="verify">Verify Ledger</button>
       <button class="btn primary" data-act="rollback">Rollback Last</button>
-      <button class="btn danger" id="gq">Sound General Quarters</button>
-      <button class="btn primary" data-inject="system-check">System Check Now</button>
+      <button class="btn danger" id="gq" title="Sound General Quarters">Sound GQ</button>
+      <button class="btn primary" data-inject="system-check" title="System Check Now">Sys Check</button>
       <button class="btn primary" data-act="main">Open Main App</button>
     </div>
 
     <div class="label blue">Presenter</div>
     <div class="grid2">
-      <button class="btn success" data-presenter="normal">Set Normal Conditions</button>
+      <button class="btn success" data-presenter="normal" title="Set Normal Conditions">OPSNORM</button>
       <button class="btn danger" data-presenter="firefight">Auto Firefight</button>
     </div>
     <div class="seg" id="injmode" role="group" aria-label="Injection mode">
@@ -74,23 +72,9 @@
     <div class="grid2">
       <button class="btn warn" data-act="start">Start Operations</button>
       <button class="btn warn" data-act="pause">Pause</button>
-      <button class="btn warn" data-inject="contact">Inject Contact</button>
-      <button class="btn warn" data-inject="overheat">Inject Overheat</button>
-      <button class="btn warn" data-inject="storm">Inject Storm</button>
-      <button class="btn warn" data-inject="rogue">Inject Rogue</button>
-      <button class="btn warn" data-inject="clear-fault">Clear Fault</button>
-      <button class="btn warn" data-inject="calm">Clear Weather</button>
     </div>
-
-    <div class="label orange">Threat &amp; Ship Systems</div>
-    <div class="grid2">
-      <button class="btn warn" data-inject="hostile">Inject Hostile</button>
-      <button class="btn warn" data-inject="inbound">Inbound Attack</button>
-      <button class="btn warn" data-inject="engine-loss">Loss of Engine</button>
-      <button class="btn warn" data-inject="fire">Fire MMR2</button>
-      <button class="btn warn" data-inject="flooding">Flooding Aft</button>
-      <button class="btn danger" data-act="reset">Reset All</button>
-    </div>
+    <button class="btn warn lg inject-all" id="inject-open">Inject Issues…</button>
+    <button class="btn danger lg inject-all" data-act="reset" style="margin-bottom:22px">Reset All</button>
 
     <div class="label blue">AI Model Server</div>
     <form class="llm-form" id="llmform" autocomplete="off">

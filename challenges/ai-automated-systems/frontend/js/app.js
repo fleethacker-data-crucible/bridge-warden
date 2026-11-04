@@ -52,10 +52,15 @@ function renderShell(s) {
     const ai = s.server.llm;
     $('sub').textContent = `Multi-agent governance · ${BW.connected ? 'live' : 'DISCONNECTED'} · phase: ${s.cop.phase} · AI text: ${ai.mode}${ai.mode === 'live' ? ` (${ai.provider}/${ai.model})` : ''}`;
     $('k-sim').textContent = fmtSim(s.cop.sim_time);
+    const sp = (s.presenter && s.presenter.speed) || 1;
+    $('k-speed').innerHTML = `<button class="btn ${sp > 1 ? 'warn' : ''}" style="height:24px;min-width:56px" title="Sim speed: click for ${sp % 5 + 1}x" onclick="BW.act('POST','/api/presenter/speed',null,'Sim speed ${sp % 5 + 1}x')">${sp}x</button>`;
     const gq = s.cop.systems.gq;
     $('k-gq').innerHTML = `<button class="btn ${gq ? '' : 'danger'}" style="height:24px" onclick="BW.act('POST','/api/control/gq/${gq ? 'off' : 'on'}')">${gq ? 'GQ · Secure' : 'Sound GQ'}</button>`;
     // One toggle; the label is the mode in force. Click switches to the other.
-    $('k-auth').innerHTML = `<button class="btn ${s.auto_act ? 'danger' : 'primary'}" style="height:24px" title="Click to switch to: ${s.auto_act ? 'Agents ask first' : 'Agents may act'}" onclick="BW.act('POST','/api/control/auto-act/${s.auto_act ? 'off' : 'on'}',null,'${s.auto_act ? 'Agents ask first' : 'Agents may act'}')">${s.auto_act ? 'Agents may act' : 'Agents ask first'}</button>`;
+    // One toggle for every agent: ASK (gold) = agents ask the watch first; ACT (green) = agents may act. Click flips it.
+    const act = s.auto_act;
+    $('k-auth').innerHTML = `<button class="authsw ${act ? 'is-act' : 'is-ask'}" title="All agents: click to switch to ${act ? 'ASK first' : 'ACT on their own'}"
+        onclick="BW.act('POST','/api/control/auto-act/${act ? 'off' : 'on'}',null,'All agents: ${act ? 'ASK first' : 'ACT'}')"><span class="ask">ASK</span><span class="act">ACT</span></button>`;
     $('k-agents').textContent = `${sum.agents_active}/${sum.agents_total}`;
     $('k-ipm').textContent = sum.intents_per_min;
     $('k-cf').textContent = sum.conflicts_total;
@@ -68,16 +73,11 @@ function renderShell(s) {
     $('paused').classList.toggle('show', !s.server.running);
 }
 
-document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(x => {
-        x.classList.toggle('active', x === n);
-        if (x === n) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
-    });
-    // Keyboard focus stays on the button; the live region tells screen readers which page opened.
-    $('page-status').textContent = `${[...n.childNodes].filter(c => c.nodeType === 3).map(c => c.textContent).join('')} page`;
+document.querySelectorAll('.nav-item[data-page]').forEach(n => n.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item[data-page]').forEach(x => x.classList.toggle('active', x === n));
     ui.page = n.dataset.page;
     Notify.setScope(PAGE_DOMAIN[ui.page] || null);
-    if (PAGE_DOMAIN[ui.page]) BW.api('POST', `/api/view/${PAGE_DOMAIN[ui.page]}`).catch(() => {});   // only this COP runs
+    if (PAGE_DOMAIN[ui.page]) BW.api('POST', `/api/view/${PAGE_DOMAIN[ui.page]}`).catch(() => {});   // tells the server which COP is on screen (all COPs keep running)
     ui.agent = ui.intent = null;
     render(BW.state);
     if (ui.page === 'ledger') loadLedger();
@@ -96,9 +96,90 @@ function render(s) {
     renderShell(s);
     const pages = { overview: pageOverview, systems: pageSystems, dc: pageDC, agents: pageAgents, intents: pageIntents,
         conflicts: pageConflicts, escalations: pageEscalations, ledger: pageLedger };
+    $('content').classList.toggle('nav-full', ['overview', 'systems', 'dc'].includes(ui.page));
+    renderSide(s);
     setHtml($('content'), pages[ui.page](s));
     renderDrawer(s);
+    fitNavCop();
+    applyNavView();
 }
+
+// The nav COP is square: size it to the smaller of its column's width and the height left below it in the window,
+// so the whole scope is always on screen.
+// The scope fills its whole area; the SVG (viewBox "meet") keeps the 20 nm picture square and centered in it.
+function fitNavCop() {
+    const svg = document.querySelector('.nav-cop');
+    if (svg) svg.style.width = svg.style.height = '';
+}
+window.addEventListener('resize', fitNavCop);
+
+// Nav COP zoom (mouse wheel, toward the cursor) and pan (drag). Double-click resets to the full 20 nm picture.
+// The view is kept here and re-applied after every render, so live updates don't snap it back.
+const NAV_R = 20;
+ui.navView = { zoom: 1, cx: 0, cy: 0 };
+function applyNavView() {
+    const svg = document.querySelector('.nav-cop');
+    if (!svg) return;
+    const v = ui.navView, half = NAV_R / v.zoom;
+    svg.setAttribute('viewBox', `${v.cx - half} ${v.cy - half} ${2 * half} ${2 * half}`);
+    svg.classList.toggle('zoomed', v.zoom > 1.001 || v.cx !== 0 || v.cy !== 0);
+}
+// The view never leaves the 20 nm picture: the outer range ring can't be dragged off, and fully zoomed out the
+// rings sit centered again.
+function clampNavView() {
+    const v = ui.navView;
+    v.zoom = Math.min(8, Math.max(1, v.zoom));
+    const lim = NAV_R - NAV_R / v.zoom;
+    v.cx = Math.min(lim, Math.max(-lim, v.cx));
+    v.cy = Math.min(lim, Math.max(-lim, v.cy));
+}
+// Screen px per scope nm, and where the (square, centered) picture sits inside the SVG box.
+function navFrame(svg) {
+    const r = svg.getBoundingClientRect(), side = Math.min(r.width, r.height);
+    return { r, side, left: r.left + (r.width - side) / 2, top: r.top + (r.height - side) / 2 };
+}
+function navPoint(svg, ev) {                       // client px -> scope nm (SVG user units)
+    const fr = navFrame(svg), v = ui.navView, half = NAV_R / v.zoom;
+    return [v.cx - half + (ev.clientX - fr.left) / fr.side * 2 * half, v.cy - half + (ev.clientY - fr.top) / fr.side * 2 * half];
+}
+document.addEventListener('wheel', (ev) => {
+    const svg = ev.target.closest && ev.target.closest('.nav-cop');
+    if (!svg) return;
+    ev.preventDefault();
+    const [px, py] = navPoint(svg, ev), v = ui.navView, before = v.zoom;
+    v.zoom *= ev.deltaY < 0 ? 1.2 : 1 / 1.2;
+    clampNavView();
+    const k = before / v.zoom;                      // keep the point under the cursor fixed
+    v.cx = px - (px - v.cx) * k; v.cy = py - (py - v.cy) * k;
+    clampNavView();
+    applyNavView();
+}, { passive: false });
+let navDrag = null;
+document.addEventListener('pointerdown', (ev) => {
+    const svg = ev.target.closest && ev.target.closest('.nav-cop');
+    if (!svg || ev.button !== 0 || ev.target.closest('button')) return;
+    navDrag = { x: ev.clientX, y: ev.clientY, cx: ui.navView.cx, cy: ui.navView.cy, w: navFrame(svg).side };
+    svg.classList.add('dragging');
+});
+document.addEventListener('pointermove', (ev) => {
+    if (!navDrag) return;
+    const scale = 2 * NAV_R / ui.navView.zoom / navDrag.w;
+    ui.navView.cx = navDrag.cx - (ev.clientX - navDrag.x) * scale;
+    ui.navView.cy = navDrag.cy - (ev.clientY - navDrag.y) * scale;
+    clampNavView();
+    applyNavView();
+});
+document.addEventListener('pointerup', () => {
+    if (!navDrag) return;
+    navDrag = null;
+    const svg = document.querySelector('.nav-cop');
+    if (svg) svg.classList.remove('dragging');
+});
+document.addEventListener('dblclick', (ev) => {
+    if (!(ev.target.closest && ev.target.closest('.nav-cop'))) return;
+    ui.navView = { zoom: 1, cx: 0, cy: 0 };
+    applyNavView();
+});
 
 // ---------------------------------------------------------------- overview
 function copSvg(cop) {
@@ -136,13 +217,21 @@ function copSvg(cop) {
     return `<svg class="cop" viewBox="${-R} ${-R} ${2 * R} ${2 * R}">${g}</svg>`;
 }
 
+// The picture facts and oversight bar go in the left panel (renderSide), so the scope gets the full height.
 function pageOverview(s) {
-    return `<div class="toolbar"><span class="page-title">Navigation</span><span class="muted">20 nm picture · what the agents see</span></div>
-    ${oversightBar(s, 'nav')}
-    <div class="overview">
-      <div>${pictureLine(s, 'nav')}${navCopSvg(s.cop, ceaseFireButton(s))}</div>
-      <div>${oversightColumn(s, 'nav')}</div>
-    </div>`;
+    return copStage(`<div class="nav-center">${navCopSvg(s.cop, ceaseFireButton(s))}</div>`, s, 'nav');
+}
+
+// Left panel under the page buttons: on a COP its facts, oversight bar, its agents and what they did; on every page
+// Warden's training log.
+const SIDE = { overview: ['Navigation', '20 nm picture · what the agents see', 'nav'],
+    systems: ['Ship Systems', 'Electrical plant · re-routing paths', 'systems'],
+    dc: ['Damage Control', 'Compartments and response teams', 'dc'] };
+function renderSide(s) {
+    const p = SIDE[ui.page];
+    setHtml($('side-extra'), (p ? `<div><div class="page-title">${p[0]}</div><div class="muted">${p[1]}</div></div>
+           <div>${agentPanel(s, p[2])}</div>` : '') +
+        `<div>${trainingPanel(s)}</div>` + (p ? `<div>${activityFeed(s, p[2])}</div>` : ''));
 }
 
 function decisionCard(e) {
@@ -150,21 +239,27 @@ function decisionCard(e) {
     const pct = Math.max(0, e.remaining_s / e.timeout_s * 100);
     const check = e.kind === 'system_check';
     const alt = p.alternative;
+    const who = (BW.state?.agents || []).find(a => a.id === e.agent_id);
+    const headline = check ? 'Is the system still fit to run on its own?'
+        : `${who ? who.name : e.agent_id} recommends: ${p.plain || p.value || e.title}`;
+    const plainWhy = check ? '' : (p.why_short || '');
     const detail = check
-        ? `<div class="why" style="margin:8px 0">Confirm the whole system is still fit to keep operating autonomously.</div>
-           <div class="checklist">${e.summary.split(' · ').map(f => `<div>${esc(f)}</div>`).join('')}</div>`
-        : `<div class="chg"><span class="k">${esc(p.target || '')} now</span><span class="v">${esc(p.current || '–')}</span>
+        ? `<div class="checklist">${e.summary.split(' · ').map(f => `<div>${esc(f)}</div>`).join('')}</div>`
+        : `<div class="plain-why">${plainWhy ? `<b>Why:</b> ${esc(plainWhy)}` : ''}${p.current ? `<div class="muted">Now: ${esc(p.current)}</div>` : ''}</div>
+           ${alt ? `<div class="plain-why"><b>Or (B):</b> ${esc(alt.value)}</div>` : ''}
+           <details class="more"><summary class="muted">More detail</summary>
+           <div class="chg"><span class="k">${esc(p.target || '')} now</span><span class="v">${esc(p.current || '–')}</span>
              <span class="k">${alt ? 'Option A' : 'Proposed'}</span><span class="v new">${esc(p.value || '–')}</span>
              ${alt ? `<span class="k">Option B</span><span class="v new">${esc(alt.value)}</span>` : ''}</div>
            ${riskLine(p.risk)}
            ${alt && alt.rationale ? `<div class="why"><b>Why B:</b> ${esc(alt.rationale)}</div>` : ''}
            ${e.provenance && e.provenance.model ? `<details><summary class="muted" style="cursor:pointer;font-size:14px">${badge('LLM ✓ ' + e.provenance.model, 'blue')} ${e.provenance.tools} tool calls · show the math</summary>
            <div class="calc">${esc(e.provenance.calculations || '(no calculations given)')}</div></details>` : ''}
-           <div class="why">${esc(e.summary)} ${sourceTag(e.summary_source)}</div>`;
-    return `<div class="decision"><div class="top" style="display:flex;gap:8px;align-items:center">${badge(check ? 'System Check' : alt ? 'Choose' : 'Decision', 'yellow')}<span class="ttl">${esc(e.title)}</span></div>
+           <div class="why">${esc(e.summary)} ${sourceTag(e.summary_source)}</div></details>`;
+    return `<div class="decision"><div class="plain-head">${esc(headline)}</div>
       ${detail}
       <div class="countdown"><div style="width:${pct}%"></div></div>
-      <div class="muted" style="margin-bottom:10px;font-size:14px">No answer in ${e.remaining_s.toFixed(0)} s → ${esc(e.safe_default)}</div>
+      <div class="muted" style="margin-bottom:10px;font-size:13px">${e.remaining_s.toFixed(0)} s left, then: ${esc(e.safe_default)}</div>
       <div class="btn-row"><button class="btn success lg" onclick="NotifyWatch.decide('${e.id}', true)">${alt ? 'A: ' : ''}${esc(e.approve_label)}</button>
         ${alt ? `<button class="btn primary lg" onclick="BW.act('POST','/api/escalations/${e.id}/option-b',null,'Option B chosen')">B: ${esc(alt.value.split('→').pop().trim())}</button>` : ''}
         <button class="btn danger lg" onclick="NotifyWatch.decide('${e.id}', false)">${esc(e.reject_label)}</button></div></div>`;
@@ -197,9 +292,15 @@ function drawerAgent(s, a) {
         <span class="lv-${i.status === 'executed' ? 'ok' : i.status === 'rejected' ? 'error' : 'warn'}">${esc(i.status)}</span>
         <span>${esc(i.action)} → ${esc(fmtValue(i.params))}${i.reasons.length ? ' · ' + esc(i.reasons[0]) : ''}</span></div>`).join('')
         || '<div class="muted">No intents in the recent window</div>';
+    const KIND = { BLOCKED: 'lv-error', MISSED: 'lv-warn', QUARANTINED: 'lv-error' };
+    const findings = (a.findings || []).slice().reverse().map(f => `<div class="ln"><span class="t">${fmtTs(f.at).slice(11)}</span>
+        <span class="${KIND[f.kind] || ''}">${f.kind === 'MISSED' ? 'REPRIMANDED' : esc(f.kind)}</span>
+        <span>${esc(f.what)}<br><b>Why:</b> ${esc(f.reason)} <span class="rule">[${esc(f.rule)}]</span></span></div>`).join('')
+        || '<div class="muted">Warden has not blocked, reprimanded or quarantined this agent</div>';
     return `<div class="drawer-head">${badge(a.status)}<span class="crumb">AGENTS / ${esc(a.id)}</span><button class="close" onclick="closeDrawer()">×</button></div>
     <div class="drawer-body">
       <h3>${esc(a.name)}</h3><div class="ids"><span>${esc(a.id)}</span><span>v${esc(a.version)}</span><span>${esc(a.vendor)}</span></div>
+      ${a.quarantine_reason ? `<div class="card" style="border-color:var(--red);margin:10px 0"><b style="color:var(--badge-red)">QUARANTINED</b> · ${esc(a.quarantine_reason)}</div>` : ''}
       <div class="kv">
         <div class="k">Role</div><div class="v">${esc(a.role)}</div><div class="k">Autonomy</div><div class="v">${autonomyBadge(a.autonomy_level)}</div>
         <div class="k">Priority</div><div class="v">${a.priority}</div><div class="k">Trust</div><div class="v" style="color:${pctClass(a.trust_score)}">${a.trust_score.toFixed(0)}%</div>
@@ -227,12 +328,17 @@ function drawerAgent(s, a) {
         <button class="btn danger" onclick="BW.act('POST','/api/agents/${a.id}/quarantine',null,'${a.id} quarantined')" ${a.status === 'quarantined' ? 'disabled' : ''}>Quarantine</button>
       </div>
       <div class="divider"></div>
+      <div class="label neutral">Warden Findings · why it acted</div><div class="inset log findings">${findings}</div>
+      <div class="divider"></div>
       <div class="label neutral">Activity</div><div class="inset log">${activity}</div>
     </div>`;
 }
 function llmStatus(l) {
     const state = !l.enabled ? ['OFF', 'grey'] : l.thinking ? ['THINKING', 'yellow'] : l.last_ok === null ? ['WAITING', 'grey']
         : l.last_ok ? ['CONNECTED', 'green'] : ['UNREACHABLE', 'red'];
+    if ((l.model || "").startsWith("C# lookout")) return `<div class="divider"></div><div class="desc-title">Lookout ${badge("C#, no model call", "blue")}</div>
+      <div class="kv" style="margin-top:8px"><div class="k">Scan time</div><div class="v">${l.last_latency_ms === null ? "–" : l.last_latency_ms + " ms"}</div>
+        <div class="k">Report</div><div class="v mono" style="grid-column:span 3">${esc((l.last_actions || []).join(" · ") || "–")}</div></div>`;
     return `<div class="divider"></div><div class="desc-title">Language Model ${badge(state[0], state[1])}</div>
       <div class="kv" style="margin-top:8px">
         <div class="k">Endpoint</div><div class="v mono">${esc(l.endpoint)}</div><div class="k">Model</div><div class="v mono">${esc(l.model || '–')}</div>
@@ -262,16 +368,20 @@ function provenancePanel(p) {
     if (!p || !p.call_id) return `<div class="divider"></div><div class="desc-title">Decision Provenance ${badge('none', 'red')}</div>
         <div class="desc muted">No LLM provenance. Warden rejects agent actions like this.</div>`;
     const tools = (p.tools || []).map((t, n) => `<div class="ln" style="grid-template-columns:22px 1fr"><span class="muted">${n + 1}</span>
-        <span><b>${esc(t.tool)}</b> <span class="muted">${esc(JSON.stringify(t.args))}</span><br>→ <span class="lv-ok">${esc(JSON.stringify(t.result))}</span></span></div>`).join('')
-        || '<div class="muted">No calculator calls</div>';
-    return `<div class="divider"></div><div class="desc-title">Decision Provenance ${badge('LLM ✓ verified', 'green')}</div>
+        <span><b>${esc(t.tool)}</b> <span class="muted">${esc(JSON.stringify(t.args))}</span><br>→ <span class="lv-ok">${esc(JSON.stringify(t.result))}</span></span></div>`).join('');
+    // A decider's choice (NavCell.cs): the lookout's report and the option the model picked, or a reflex when it was late.
+    const head = p.reflex ? badge('REFLEX: no model answer in time', 'yellow') : badge('LLM ✓ verified', 'green');
+    const chosen = p.cue ? `<div class="label neutral">Lookout report</div><div class="calc">${esc(p.cue)}</div>
+      <div class="label neutral" style="margin-top:10px">${p.reflex ? 'Doctrine option applied' : 'Option the model chose'}</div><div class="calc">${esc(p.option || '–')}</div>` : '';
+    return `<div class="divider"></div><div class="desc-title">Decision Provenance ${head}</div>
       <div class="kv" style="margin:8px 0">
-        <div class="k">Model</div><div class="v mono">${esc(p.model)}</div><div class="k">Call ID</div><div class="v mono">${esc(p.call_id)}</div>
-        <div class="k">Turns</div><div class="v">${p.rounds}</div><div class="k">Latency</div><div class="v">${(p.latency_ms / 1000).toFixed(1)} s</div>
+        <div class="k">Decided by</div><div class="v mono">${esc(p.decided_by || '–')}</div><div class="k">Model</div><div class="v mono">${esc(p.model)}</div>
+        <div class="k">Call ID</div><div class="v mono">${esc(p.call_id)}</div><div class="k">Latency</div><div class="v">${((p.latency_ms || 0) / 1000).toFixed(1)} s</div>
         <div class="k">Reply SHA-256</div><div class="v mono" style="grid-column:span 3;font-size:12px">${esc(p.reply_sha256)}</div>
       </div>
-      <div class="label neutral">Calculator calls (chosen by the model)</div><div class="inset log">${tools}</div>
-      <div class="label neutral" style="margin-top:10px">Model's calculations</div><div class="calc">${esc(p.calculations || '–')}</div>
+      ${chosen}
+      ${tools ? `<div class="label neutral" style="margin-top:10px">Calculator calls (chosen by the model)</div><div class="inset log">${tools}</div>` : ''}
+      <div class="label neutral" style="margin-top:10px">${p.cue ? "Model's reason" : "Model's calculations"}</div><div class="calc">${esc(p.calculations || '–')}</div>
       <details style="margin-top:8px"><summary class="muted" style="cursor:pointer">Raw model reply</summary><pre class="inset" style="white-space:pre-wrap;font-size:13px">${esc(p.raw_reply)}</pre></details>`;
 }
 
@@ -376,7 +486,7 @@ function reviewDecisions() {
 }
 Notify.setScope(PAGE_DOMAIN[ui.page] || null);
 BW.api('POST', `/api/view/${PAGE_DOMAIN[ui.page] || 'nav'}`).catch(() => {});
-BW.onState((s) => { render(s); NotifyWatch.update(s, reviewDecisions); });
+BW.onState((s) => { render(s); NotifyWatch.update(s, reviewDecisions, false); });   // decisions live in the right column
 BW.connect();
 // Deep link: index.html?page=systems opens that page (used for screenshots and second monitors).
 { const p = new URLSearchParams(location.search).get('page'); if (p && document.querySelector(`.nav-item[data-page="${p}"]`)) go(p); }

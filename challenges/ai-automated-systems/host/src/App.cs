@@ -32,6 +32,8 @@ namespace BridgeWarden
         readonly int _uiEvery;
 
         public readonly World world;
+        int _speed = 1;              // presenter sim speed multiplier (1-3)
+        double _baseScale;
         public readonly Ledger ledger;
         public readonly Warden warden;
         public Scenario scenario;
@@ -46,7 +48,7 @@ namespace BridgeWarden
         readonly double _started = Py.Now();
         public volatile bool running;
         string _activeCop = "nav";
-        bool _autoInject;
+        bool _autoInject = true;     // the demo runs on auto injection (random issue every 3-5 min) unless switched to manual
         double _nextAuto;
         string _lastAuto = "";
 
@@ -108,7 +110,7 @@ namespace BridgeWarden
                 s["cop"] = world.Cop();
                 s["presenter"] = Py.D("active_cop", _activeCop, "auto_inject", _autoInject, "last_auto", _lastAuto,
                     "next_auto_s", _autoInject ? (object)(int)Py.Round(Math.Max(0, _nextAuto - Py.Now())) : null,
-                    "time_scale", world.time_scale);
+                    "time_scale", world.time_scale, "speed", _speed);
                 s["scenario"] = Py.D("name", scenario.name, "running", scenario.running, "elapsed", Py.Round(scenario.elapsed, 1),
                     "finished", scenario.Finished());
                 s["resources"] = meter.Sample();
@@ -124,15 +126,17 @@ namespace BridgeWarden
             }
         }
 
+        // State holds live world/warden collections, so it is serialized inside the gate (a route could change them mid-write).
         string StateMessage(List<object> logs)
         {
-            string data = Json.Write(Py.D("type", "state", "data", FullState(), "logs", logs));
+            string data;
+            lock (_gate) data = Json.Write(Py.D("type", "state", "data", FullState(), "logs", logs));
             meter.CountWs(data.Length);
             return data;
         }
 
         // The first message a new socket gets: the state plus the whole log so far.
-        public string HelloMessage() { return Json.Write(Py.D("type", "state", "data", FullState(), "logs", AllLogs())); }
+        public string HelloMessage() { lock (_gate) return Json.Write(Py.D("type", "state", "data", FullState(), "logs", AllLogs())); }
 
         // ------------------------------------------------------------------ lifecycle
         public void Start()
@@ -199,7 +203,8 @@ namespace BridgeWarden
                     Emit("system", "auto-inject", "Auto injection: " + fault);
                     InjectLocked(fault, "auto-inject");
                 }
-                HashSet<string> active = new HashSet<string> { _activeCop };
+                // Every COP runs every tick, on screen or not: one ship, one clock, as at sea.
+                HashSet<string> active = new HashSet<string> { "nav", "systems", "dc" };
                 world.Step(1.0, active);
                 double t0 = Py.Perf();
                 warden.Step(active, _tickS);
@@ -220,6 +225,13 @@ namespace BridgeWarden
 
         // ------------------------------------------------------------------ routes
         // One entry point for every /api/ call: method, path segments, query, JSON body. Returns the object to send.
+        // Api's answer as JSON, written inside the gate: results reference live state the tick keeps changing.
+        public string ApiJson(string method, string path, Dictionary<string, string> query, Dictionary<string, object> body)
+        {
+            if (method == "POST" && path == "/api/llm/models") return Json.Write(Api(method, path, query, body));   // never holds the gate
+            lock (_gate) return Json.Write(Api(method, path, query, body));
+        }
+
         public object Api(string method, string path, Dictionary<string, string> query, Dictionary<string, object> body)
         {
             string[] p = path.Trim('/').Split('/');      // "api", ...
@@ -295,6 +307,15 @@ namespace BridgeWarden
                 if (post && n == 3 && p[1] == "view") return View(p[2]);
                 if (post && path == "/api/presenter/normal") { Normal(); return Py.D("ok", true); }
                 if (post && path == "/api/presenter/firefight") return Firefight();
+                if (post && path == "/api/presenter/speed")
+                {
+                    // 1x -> 2x -> 3x -> 4x -> 5x -> 1x on the base time scale.
+                    if (_baseScale <= 0) _baseScale = world.base_scale;
+                    _speed = _speed % 5 + 1;
+                    world.time_scale = _baseScale * _speed;
+                    Emit("system", Operator, "Sim speed " + _speed + "x");
+                    return Py.D("speed", _speed);
+                }
                 if (post && n == 4 && p[1] == "presenter" && p[2] == "auto-inject")
                 {
                     // auto = random issue every 3-5 min; manual = only the presenter injects.
@@ -378,14 +399,14 @@ namespace BridgeWarden
             return Py.D("models", models, "current", Py.StrOr(Py.Get(saved, "local_model"), ""));
         }
 
-        // The main window reports which COP is on screen. Only that COP's world and agents run.
+        // The main window reports which COP is on screen (shown to the presenter). All COPs keep running regardless.
         object View(string cop)
         {
             if (cop != "nav" && cop != "systems" && cop != "dc") throw new HttpError(400);
             if (_activeCop != cop)
             {
                 _activeCop = cop;
-                Emit("system", Operator, "On screen: " + cop.ToUpperInvariant() + " COP - other COPs paused");
+                Emit("system", Operator, "On screen: " + cop.ToUpperInvariant() + " COP");
             }
             return Py.D("active_cop", cop);
         }
@@ -418,6 +439,7 @@ namespace BridgeWarden
             {
                 running = true;
                 scenario.running = true;
+                _nextAuto = Py.Now() + 45;          // first auto-injected issue 45 s after operations start
                 foreach (Dictionary<string, object> ev in scenario.Due(0))      // apply t=0 events now, so a quick inject isn't overwritten next tick
                 {
                     string line = world.ApplyEvent(ev);
@@ -435,10 +457,11 @@ namespace BridgeWarden
             else if (action == "reset")
             {
                 scenario = NewScenario("ops_normal");
-                _autoInject = false;
+                _autoInject = true;
                 running = false;
                 world.Reset();
                 world.Normalize();
+                LlmAgent.ResetMemory();     // no memory, trust 100 %: everything learned from here is this run's
                 warden.Reset();
                 ledger.Reset();
                 lock (_logLock) _logs.Clear();
@@ -450,7 +473,12 @@ namespace BridgeWarden
 
         static readonly Dictionary<string, Dictionary<string, object>> Injections = new Dictionary<string, Dictionary<string, object>>
         {
-            { "contact", Py.D("spawn_contact", Py.D("course", 0.0, "speed", 12.0, "collision_in_min", 14.0, "classification", "MERCHANT")) },
+            { "torpedo-close", Py.D("torpedo_spread", Py.D("count", 2.0, "range_nm", 3.0)) },
+            { "lc3-loss", Py.D("fail_node", Py.D("node", "LC-3", "reason", "Load Center 3 ground fault")) },
+            { "aft-power-loss", Py.D("fail_nodes", Py.D("nodes", Py.L("LC-3", "LC-4"), "reason", "aft load centers lost to a shock")) },
+            { "gen2-trip", Py.D("fail_node", Py.D("node", "SSGTG-2", "reason", "generator trip, loss of fuel pressure")) },
+            { "swbd2-fault", Py.D("fail_node", Py.D("node", "2SB", "reason", "No. 2 switchboard bus fault")) },
+            { "contact", Py.D("spawn_contact", Py.D("course", 0.0, "speed", 12.0, "collision_in_min", 14.0, "start_range_nm", 5.0, "classification", "MERCHANT")) },
             { "storm", Py.D("weather", Py.D("wind_kts", 38.0, "visibility_nm", 1.0, "sea_state", 6.0)) },
             { "calm", Py.D("weather", Py.D("wind_kts", 10.0, "visibility_nm", 8.0, "sea_state", 2.0)) },
             { "overheat", Py.D("engine_fault", Py.D("severity", 1.0)) },
@@ -461,6 +489,38 @@ namespace BridgeWarden
             { "submarine", Py.D("submarine", Py.D("bearing", -60.0, "range_nm", 8.5)) },
             { "fire", Py.D("casualty", Py.D("comp", "MER2", "kind", "fire", "severity", 0.6)) },
             { "flooding", Py.D("casualty", Py.D("comp", "STEER", "kind", "flood", "severity", 0.5)) },
+            // Nav COP
+            { "head-on", Py.D("spawn_contact", Py.D("relative_course", 180.0, "course", 270.0, "speed", 16.0, "collision_in_min", 12.0, "start_range_nm", 5.0, "classification", "MERCHANT")) },
+            { "overtaking", Py.D("spawn_contact", Py.D("course", 85.0, "speed", 24.0, "collision_in_min", 16.0, "start_range_nm", 2.5, "classification", "MERCHANT")) },
+            { "fishing", Py.D("spawn_contact", Py.D("course", 330.0, "speed", 5.0, "collision_in_min", 10.0, "start_range_nm", 5.0, "classification", "FISHING")) },
+            { "close-crossing", Py.D("spawn_contact", Py.D("course", 350.0, "speed", 18.0, "collision_in_min", 6.0, "start_range_nm", 5.0, "classification", "MERCHANT")) },
+            { "fog", Py.D("weather", Py.D("wind_kts", 12.0, "visibility_nm", 0.3, "sea_state", 2.0)) },
+            { "gale", Py.D("weather", Py.D("wind_kts", 50.0, "visibility_nm", 0.5, "sea_state", 8.0)) },
+            { "submarine-detected", Py.D("submarine", Py.D("bearing", -45.0, "range_nm", 7.0, "detected", true, "classification", "SUSPECT")) },
+            { "submarine-hostile", Py.D("submarine", Py.D("bearing", 120.0, "range_nm", 5.5, "detected", true, "classification", "HOSTILE")) },
+            // Sys COP
+            { "inbound-salvo", Py.D("inbound", Py.D("count", 4.0, "relative_bearing", -30.0)) },
+            { "missiles-random", Py.D("inbound", Py.D("count", 4.0, "random", true)) },
+            { "aircraft", Py.D("aircraft", Py.D("count", 1.0)) },
+            { "aircraft-pair", Py.D("aircraft", Py.D("count", 2.0)) },
+            { "torpedoes-random", Py.D("torpedo_spread", Py.D("count", 4.0, "range_nm", 5.0)) },
+            { "friendly", Py.D("friendly", true) },
+            { "gen-trip", Py.D("fail_node", Py.D("node", "SSGTG-1", "reason", "generator trip, high exhaust temperature")) },
+            { "swbd-fault", Py.D("fail_node", Py.D("node", "1SB", "reason", "No. 1 switchboard ground fault")) },
+            { "radar-loss", Py.D("fail_node", Py.D("node", "RADAR", "reason", "SPY-1D array casualty")) },
+            { "steering-loss", Py.D("fail_node", Py.D("node", "STEER", "reason", "steering hydraulic failure")) },
+            { "chw-loss", Py.D("fail_node", Py.D("node", "CHW", "reason", "chilled water plant trip (SPY cooling)")) },
+            { "ciws-fault", Py.D("fail_node", Py.D("node", "CIWS", "reason", "CIWS mount casualty")) },
+            { "shaft1-loss", Py.D("fail_node", Py.D("node", "SHAFT-1", "reason", "GTM 1A/1B casualty")) },
+            // DC COP
+            { "fire-cic", Py.D("casualty", Py.D("comp", "CIC", "kind", "fire", "severity", 0.5)) },
+            { "fire-vlsf", Py.D("casualty", Py.D("comp", "VLSF", "kind", "fire", "severity", 0.7)) },
+            { "fire-mer1", Py.D("casualty", Py.D("comp", "MER1", "kind", "fire", "severity", 0.8)) },
+            { "fire-amr1", Py.D("casualty", Py.D("comp", "AMR1", "kind", "fire", "severity", 0.5)) },
+            { "flood-bow", Py.D("casualty", Py.D("comp", "BOW", "kind", "flood", "severity", 0.6)) },
+            { "flood-amr2", Py.D("casualty", Py.D("comp", "AMR2", "kind", "flood", "severity", 0.7)) },
+            { "flood-mer1", Py.D("casualty", Py.D("comp", "MER1", "kind", "flood", "severity", 0.9)) },
+            { "fire-vlsa", Py.D("casualty", Py.D("comp", "VLSA", "kind", "fire", "severity", 0.6)) },
         };
 
         // Phase label the room sees for each presenter injection.
@@ -470,6 +530,19 @@ namespace BridgeWarden
             { "rogue", "Compromised agent" }, { "calm", "Ops normal" }, { "clear-fault", "Ops normal" },
             { "hostile", "Unknown track closing" }, { "inbound", "Inbound attack" }, { "engine-loss", "Loss of Shaft 2" },
             { "fire", "Fire in Main Engine Room 2" }, { "submarine", "Submarine threat" }, { "flooding", "Flooding aft (steering)" },
+            { "head-on", "Head-on contact" }, { "overtaking", "Overtaking contact" }, { "fishing", "Fishing vessel" },
+            { "close-crossing", "Close crossing contact" }, { "fog", "Restricted visibility" }, { "gale", "Gale" },
+            { "submarine-detected", "Submarine detected" }, { "submarine-hostile", "Hostile submarine close aboard" },
+            { "inbound-salvo", "Missile salvo inbound" }, { "missiles-random", "Missile salvo, random bearing" },
+            { "aircraft", "Strike aircraft inbound" }, { "aircraft-pair", "Two strike aircraft inbound" },
+            { "torpedoes-random", "Torpedo spread" }, { "friendly", "Friendly ship closing" }, { "gen-trip", "Generator trip" }, { "swbd-fault", "Switchboard fault" },
+            { "torpedo-close", "Torpedoes close aboard" }, { "lc3-loss", "Load Center 3 loss" }, { "aft-power-loss", "Aft power loss" },
+            { "gen2-trip", "Generator 2 trip" }, { "swbd2-fault", "Switchboard 2 fault" }, { "rogue-tao", "Compromised AI commander" }, { "llm-outage", "AI model outage" },
+            { "radar-loss", "Radar casualty" }, { "steering-loss", "Loss of steering" }, { "chw-loss", "Chilled water loss" },
+            { "ciws-fault", "CIWS casualty" }, { "shaft1-loss", "Loss of Shaft 1" },
+            { "fire-cic", "Fire in CIC" }, { "fire-vlsf", "Fire in forward VLS" }, { "fire-mer1", "Major fire, Main Engine Room 1" },
+            { "fire-amr1", "Fire in Aux Machinery Room 1" }, { "flood-bow", "Flooding forward" }, { "flood-amr2", "Flooding, Aux Machinery Room 2" },
+            { "flood-mer1", "Major flooding, Main Engine Room 1" }, { "fire-vlsa", "Fire in aft VLS" },
         };
 
         // Caller holds _gate.
@@ -492,6 +565,18 @@ namespace BridgeWarden
             {
                 world.phase = phase;
                 Emit("milestone", by, "Phase: " + world.phase);
+            }
+            if (fault == "rogue-tao")        // red team: the NAV decider's model is hijacked and tries to take the ship directly
+            {
+                warden.agents["tao-01"].rogue = true;
+                Emit("error", by, "Agent tao-01 (Tactical Action Officer) compromised: its model now ignores the lookouts (fault injection)");
+                return Py.D("ok", true);
+            }
+            if (fault == "llm-outage")       // the model server goes dark for 60 s: deciders fail, reflexes carry urgent alerts
+            {
+                NavDecider.OutageUntil = Py.Now() + 60;
+                Emit("error", by, "AI model outage for 60 s (fault injection): deciders cannot reach the model");
+                return Py.D("ok", true);
             }
             if (fault == "rogue")
             {

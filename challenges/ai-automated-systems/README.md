@@ -12,14 +12,14 @@ Nothing to install. Windows PowerShell 5.1 compiles the C# in `host\src` with `A
 .\BridgeWarden-Dev.bat    # developer launcher: visible console, pauses on errors
 .\BridgeWarden-Dev.bat -CheckOnly   # source rules + compile only
 ```
-Then click **Start Operations** in Warden Control. The sim runs in *ops normal*; the presenter drives events with the **Inject** buttons (contact, overheat, storm, rogue). Every decision gives the operator 2 minutes, and a **periodic system check** asks the operator to confirm operations every 2 minutes (two misses → automatic SAFE-STOP). Use **SAFE-STOP** (hold 2 s) at any time. Presenter script: [docs/demo-script.md](docs/demo-script.md). For the scripted hands-off run, set `$env:SCENARIO='full_demo'` first.
+Then click **Start Operations** in Warden Control. The sim runs in *ops normal*; the presenter drives events from **Inject Issues…** (a column per picture, plus **Warden Tests**: compromised AI commander, rogue lookout, AI model outage). Every decision gives the operator 2 minutes, and a **periodic system check** asks the operator to confirm operations every 2 minutes (two misses → automatic SAFE-STOP). Use **SAFE-STOP** (hold 2 s) at any time. Presenter script: [docs/demo-script.md](docs/demo-script.md). For the scripted hands-off run, set `$env:SCENARIO='full_demo'` first.
 
-AI calls default to local phoenix-lai at `http://127.0.0.1:1234/v1` (model `phoenixlai`); with no model there, agents show NO MODEL and explanations use rule text. Settings: `backend\.env` (from `backend\.env.example`) or the AI Model Server box in Warden Control. Port block 8774-8776 is provisional until edge-ops `PORTS.md` lists Bridge Warden. The host answers `/__fleethacker/id` and `/__fleethacker/shutdown`.
+AI calls default to local phoenix-lai at `http://127.0.0.1:1234/v1` (model `phoenixlai`); with no model there, the deciders show the model error, urgent alerts get the lookout's doctrine option by reflex (marked REFLEX, still checked by Warden), and explanations use rule text. Settings: `backend\.env` (from `backend\.env.example`) or the AI Model Server box in Warden Control. Port block 8774-8776 is provisional until edge-ops `PORTS.md` lists Bridge Warden. The host answers `/__fleethacker/id` and `/__fleethacker/shutdown`.
 
 Ship it as one text file: `.\Package_App.ps1` writes `Bridge_Warden.package`; `.\Unpack.ps1` rebuilds the folders on the other machine.
 
 ## Test it
-Pester 5 tests in `host\tests` run in CI (`.github/workflows/ci.yml`, Windows PowerShell 5.1 runners):
+Pester 5 tests in `host\tests` (install once: `Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser`). There is no CI workflow in this repo; run them locally:
 ```powershell
 Invoke-Pester host\tests
 ```
@@ -30,7 +30,8 @@ Invoke-Pester host\tests
 | `host/Start-BridgeWarden.ps1` | Host: PS 5.1 check, source rules, compile, port block, browser windows |
 | `host/Build.ps1` | Source rules (network and native code allowed in one named file each) and compiler settings |
 | `host/src/Engine.cs` | Governance core: 8-stage pipeline, conflicts, arbitration, escalations, monitors, operator controls |
-| `host/src/LlmAgent.cs`, `AgentTools.cs` | The AI agents (each a model role limited to its scoped view of the COP) and their calculator tools |
+| `host/src/NavCell.cs` | Every COP: C# lookouts raise plain-English alerts with ready-made options (NAV: collision, weather, route, defense, strike, undersea; Systems: power re-routing, patch cables, engine, fuel; DC: casualties and teams); one model call per picture (TAO, EOOW, DCO) picks; reflex fallback if it is late; Warden checks every order and the deciders learn from its blocks |
+| `host/src/LlmAgent.cs`, `AgentTools.cs` | Shared model-call plumbing (provenance registry, action parsing, lessons) and the free-form model path a compromised agent uses in the Warden Tests; the calculators the lookouts use |
 | `host/src/World.cs`, `ShipSystems.cs` | Synthetic world: own ship, contacts, CPA/TCPA, weather, threats, power plant, damage control, scenario runner |
 | `host/src/Ledger.cs` | Append-only, hash-chained audit ledger (Windows' built-in SQLite) |
 | `host/src/Llm.cs`, `LlmClient.cs`, `LlmTasks.cs`, `Explain.cs` | The one AI wrapper: modes, cache, fallback text, streaming |
@@ -38,5 +39,5 @@ Invoke-Pester host\tests
 | `host/src/Resources.cs` | Edge budget meter (CPU, RAM, UI stream, intent size) |
 | `backend/config/` | `agents.json` (registry) and `policies.json`: add an agent or rule without code |
 | `backend/scenarios/` | Scenario storylines (`full_demo.json`, `firefight.json`, `ops_normal.json`) |
-| `backend/skills/` | Each agent role's skill notes and lessons, sent to the model |
+| `backend/skills/` | The deciders' guides and glossaries (`nav_tao.md`, `eoow.md`, `dc_officer.md`) sent with every decision; `_common.md` and `energy.md` for the red-team path |
 | `frontend/` | `control.html` (Warden Control) and `index.html` (main app); no build step |

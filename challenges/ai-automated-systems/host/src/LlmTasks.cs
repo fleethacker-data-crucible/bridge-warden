@@ -2,7 +2,7 @@
 // Named LLM tasks for Bridge Warden (spec: docs/llm-wrapper.md).
 //
 // Each task defines a prompt template, its input fields, and fallback text built
-// from the inputs without any AI model. The AI only explains; it never decides.
+// from the inputs without any AI model. These tasks only explain; decisions are NavCell.cs + Warden.
 using System;
 using System.Collections.Generic;
 using System.Text;

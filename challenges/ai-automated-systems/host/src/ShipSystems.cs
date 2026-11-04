@@ -20,7 +20,9 @@ namespace BridgeWarden
 
         public static readonly Dictionary<string, object> SHIP = Py.D(
             "name", "USS Arleigh Burke", "hull", "DDG-51", "class", "Arleigh Burke-class destroyer (Flight I)",
-            "loa_ft", 505, "max_speed_kn", 31, "one_shaft_speed_kn", 20);
+            "loa_ft", 505, "max_speed_kn", 25, "flank_speed_kn", 30, "one_shaft_speed_kn", 18);
+        // 25 kn is the normal maximum; 30 kn (flank) is the most the plant can push and Warden allows it only under
+        // attack (inbound missile or torpedo, or a HOSTILE track inside 10 nm). The model decides when to use it.
 
         // --------------------------------------------------------------------------- layout (fore -> aft)
         // Compartments: id, name, compartment number (deck-frame-position-use, illustrative), frames (approx. ft from bow).
@@ -58,14 +60,30 @@ namespace BridgeWarden
         public static readonly object[][] BREAKERS = BuildBreakers();
         public static readonly string[] FIRE_PUMPS = { "FP-1", "FP-2", "FP-3" };
 
-        // Repair lockers man up only at General Quarters. The duty-section Flying Squad is always ready.
+        // Response teams RT1-RT10, one stationed along each part of the ship. They man up only at General Quarters,
+        // except the duty-section team RT6, which is always ready.
         public static readonly List<object> DC_TEAMS = Py.L(
-            Py.D("id", "R2", "name", "Repair 2 (Fwd)", "home", 110, "members", 14, "always", false),
-            Py.D("id", "R8", "name", "Repair 8 (Electronics)", "home", 165, "members", 8, "always", false),
-            Py.D("id", "R5", "name", "Repair 5 (Main Space)", "home", 300, "members", 12, "always", false),
-            Py.D("id", "R3", "name", "Repair 3 (Aft)", "home", 420, "members", 14, "always", false),
-            Py.D("id", "FS", "name", "Flying Squad (Duty)", "home", 260, "members", 6, "always", true));
-        public const double MANNING_S = 60;          // time for a repair locker to man up after GQ is sounded
+            Py.D("id", "RT1", "name", "Response Team 1 (Bow)", "home", 30, "members", 8, "always", false),
+            Py.D("id", "RT2", "name", "Response Team 2 (Fwd VLS)", "home", 95, "members", 10, "always", true),
+            Py.D("id", "RT3", "name", "Response Team 3 (CIC / Electronics)", "home", 165, "members", 8, "always", false),
+            Py.D("id", "RT4", "name", "Response Team 4 (AMR 1)", "home", 210, "members", 8, "always", false),
+            Py.D("id", "RT6", "name", "Response Team 6 (Duty)", "home", 240, "members", 6, "always", true),
+            Py.D("id", "RT5", "name", "Response Team 5 (MER 1)", "home", 275, "members", 10, "always", false),
+            Py.D("id", "RT7", "name", "Response Team 7 (MER 2)", "home", 320, "members", 10, "always", false),
+            Py.D("id", "RT8", "name", "Response Team 8 (AMR 2)", "home", 364, "members", 8, "always", false),
+            Py.D("id", "RT9", "name", "Response Team 9 (Aft VLS)", "home", 410, "members", 10, "always", true),
+            Py.D("id", "RT10", "name", "Response Team 10 (Steering / Aft)", "home", 470, "members", 8, "always", false));
+        public const double MANNING_S = 60;          // (kept for older callers) typical time to man up after GQ
+        // Off watch (Condition III): three duty teams (RT2 fwd, RT6 amidships, RT9 aft) stand by at their stations; the
+        // rest are asleep in berthing or eating in the galley. At GQ they wake / drop everything (WAKE_S / GALLEY_S real
+        // seconds) and run to their own station at a human pace through passageways and ladders (RUN_FT_PER_S, real
+        // seconds: 1x shows it as it would happen, 2x and 3x speed it up).
+        public static readonly Dictionary<string, object[]> OFF_WATCH = new Dictionary<string, object[]> {
+            { "RT1", new object[] { "asleep", 70.0 } }, { "RT3", new object[] { "galley", 185.0 } }, { "RT4", new object[] { "asleep", 70.0 } },
+            { "RT5", new object[] { "galley", 185.0 } }, { "RT7", new object[] { "asleep", 425.0 } }, { "RT8", new object[] { "galley", 185.0 } },
+            { "RT10", new object[] { "asleep", 425.0 } } };
+        public const double RUN_FT_PER_S = 9.0, WAKE_S = 15.0, GALLEY_S = 4.0;
+        public double real_per_sim = 0.1;           // real seconds per sim second at 1x (World sets it from its base time scale)
         public const double INVESTIGATE_S = 20;      // time for an investigator to confirm a reported casualty
         // loads each SSGTG carries (illustrative units)
         public static readonly Dictionary<string, int> GEN_CAPACITY = new Dictionary<string, int> { { "SSGTG-1", 7 }, { "SSGTG-2", 7 }, { "SSGTG-3", 7 } };
@@ -76,12 +94,14 @@ namespace BridgeWarden
         public const double EMCON_RADIUS_NM = 10.0;
         public const double DETECT_FROM_NM = 20.0;
         public const double LAUNCH_RANGE_NM = 12.0;     // stand-off launch range (illustrative)
-        public const double INBOUND_KN = 500.0;         // subsonic sea-skimmer (illustrative)
+        public const double INBOUND_KN = 550.0;         // subsonic sea-skimmer (~Mach 0.85)
+        public const double AIRCRAFT_KN = 450.0;        // strike aircraft
+        public const double AIRCRAFT_LAUNCH_NM = 9.0;   // aircraft fire at this range, then turn away
         public const double TEAM_FRAMES_PER_S = 2.0;    // ~2 ft/s through passageways with gear
         public static readonly string[] HIT_TARGETS = { "MER2", "AMR2", "CIC" };
         public const double COP_RANGE_NM = 20.0;        // radar picture: an inbound beyond this is not detected yet
         // Engagement model (ILLUSTRATIVE numbers, not real performance):
-        public const double SM2_KN = 900.0;             // interceptor fly-out speed
+        public const double SM2_KN = 2000.0;            // interceptor fly-out speed (~Mach 3)
         public const double SM2_PK = 0.60;              // chance one interceptor kills its target
         public const double SM2_MAX_NM = 15.0, SM2_MIN_NM = 1.5;
         public const int SM2_MAGAZINE = 24;
@@ -93,7 +113,7 @@ namespace BridgeWarden
             { "HARPOON", Py.D("kn", 500.0, "pk", 0.70, "min", 1.0, "max", 60.0, "mag", 8, "vs", "surface") },
             { "ASROC", Py.D("kn", 600.0, "pk", 0.55, "min", 1.0, "max", 10.0, "mag", 8, "vs", "subsurface") },
         };
-        public const double TORP_KN = 45.0;             // heavyweight torpedo speed
+        public const double TORP_KN = 50.0;             // heavyweight torpedo speed
         public const double TORP_RUN_NM = 9.0;          // fuel: total run before it sinks
         public const double NIXIE_NM = 2.0, NIXIE_PK = 0.50;     // AN/SLQ-25 towed decoy: one seduction chance as the torpedo passes 2 nm
         public const double SUB_DETECT_NM = 6.0;        // hull sonar holds a quiet submarine inside this range
@@ -123,16 +143,29 @@ namespace BridgeWarden
         {
             List<object[]> l = new List<object[]> {
                 new object[] { "B-G1", "SSGTG-1", "1SB", true }, new object[] { "B-G2", "SSGTG-2", "2SB", true }, new object[] { "B-G3", "SSGTG-3", "3SB", false },
-                new object[] { "B-T12", "1SB", "2SB", false }, new object[] { "B-T23", "2SB", "3SB", false },
+                new object[] { "B-T12", "1SB", "2SB", false }, new object[] { "B-T23", "2SB", "3SB", true },   // 3SB is kept live from 2SB while SSGTG-3 stands by
                 new object[] { "B-1L1", "1SB", "LC-1", true }, new object[] { "B-1L2", "1SB", "LC-2", true }, new object[] { "B-2L3", "2SB", "LC-3", true }, new object[] { "B-2L4", "2SB", "LC-4", true },
                 new object[] { "B-2L1", "2SB", "LC-1", false }, new object[] { "B-2L2", "2SB", "LC-2", false }, new object[] { "B-1L3", "1SB", "LC-3", false },
                 new object[] { "B-3L3", "3SB", "LC-3", false }, new object[] { "B-3L4", "3SB", "LC-4", false },
+                // 2026-10-26: more ways to re-route. A ring tie (1SB-3SB), a third alternate source for every load
+                // center, and load-center cross-ties, all normally open.
+                new object[] { "B-T13", "1SB", "3SB", false },
+                new object[] { "B-3L1", "3SB", "LC-1", false }, new object[] { "B-3L2", "3SB", "LC-2", false }, new object[] { "B-1L4", "1SB", "LC-4", false },
+                new object[] { "B-X12", "LC-1", "LC-2", false }, new object[] { "B-X34", "LC-3", "LC-4", false },
             };
+            // F-<load>: normal feeder (closed). A-<load>: alternate feeder from a second load center (open), so any vital
+            // load can be kept on line when its own load center is lost (automatic bus transfer, done by hand here).
             string[][] feeds = {
                 new string[] { "LC-1", "ADS", "FP-1" }, new string[] { "LC-2", "CIWS", "RADAR", "ECM", "COMMS" },
                 new string[] { "LC-3", "SHAFT-1", "CHW", "SHAFT-2", "FP-2" }, new string[] { "LC-4", "STEER", "CMD", "FP-3" } };
             foreach (string[] f in feeds)
                 for (int i = 1; i < f.Length; i++) l.Add(new object[] { "F-" + f[i], f[0], f[i], true });
+            string[][] alt = {
+                new string[] { "ADS", "LC-2" }, new string[] { "FP-1", "LC-2" }, new string[] { "CIWS", "LC-1" }, new string[] { "RADAR", "LC-1" },
+                new string[] { "ECM", "LC-1" }, new string[] { "COMMS", "LC-1" }, new string[] { "SHAFT-1", "LC-4" }, new string[] { "CHW", "LC-2" },
+                new string[] { "SHAFT-2", "LC-4" }, new string[] { "FP-2", "LC-4" }, new string[] { "STEER", "LC-3" }, new string[] { "CMD", "LC-3" },
+                new string[] { "FP-3", "LC-3" } };
+            foreach (string[] a in alt) l.Add(new object[] { "A-" + a[0], a[1], a[0], false });
             return l.ToArray();
         }
 
@@ -201,6 +234,13 @@ namespace BridgeWarden
                 Dictionary<string, object> t = new Dictionary<string, object>(M(o));
                 t["pos"] = Py.Num(t["home"]);
                 t["status"] = (bool)t["always"] ? "standby" : "unmanned";
+                t["activity"] = (bool)t["always"] ? "on duty" : "";
+                object[] off;
+                if (!(bool)t["always"] && OFF_WATCH.TryGetValue((string)t["id"], out off))
+                {
+                    t["activity"] = off[0];
+                    t["pos"] = off[1];
+                }
                 t["target"] = null;
                 t["casualty"] = null;
                 t["boundaries"] = null;
@@ -216,6 +256,7 @@ namespace BridgeWarden
         // Energize everything reachable from a running generator through closed breakers and working nodes.
         public void Flow()
         {
+            UpdateMaint();
             foreach (Dictionary<string, object> n in nodes.Values) n["powered"] = false;
             List<string> frontier = new List<string>();
             foreach (KeyValuePair<string, Dictionary<string, object>> kv in nodes)
@@ -231,12 +272,14 @@ namespace BridgeWarden
                 string cur = frontier[frontier.Count - 1];
                 frontier.RemoveAt(frontier.Count - 1);
                 nodes[cur]["powered"] = true;
+                if (!IsBus(cur))
+                    continue;
                 foreach (Dictionary<string, object> b in breakers.Values)
                 {
                     if (!B(b, "closed") || (cur != (string)b["a"] && cur != (string)b["b"]))
                         continue;
                     string nxt = (string)b["a"] == cur ? (string)b["b"] : (string)b["a"];
-                    if (!seen.Contains(nxt) && !B(nodes[nxt], "failed"))
+                    if (!seen.Contains(nxt) && !B(nodes[nxt], "failed") && !B(nodes[nxt], "maint"))
                     {
                         seen.Add(nxt);
                         frontier.Add(nxt);
@@ -252,6 +295,43 @@ namespace BridgeWarden
             ComputeLoad();
         }
 
+        // Maintenance underway: while a repair team is on scene in a compartment, the equipment there is tagged out
+        // (isolated, no power through it) so the team can work safely. Everything it fed has to be re-routed.
+        HashSet<string> _maintPrev = new HashSet<string>();
+        void UpdateMaint()
+        {
+            if (teams == null || nodes == null) return;
+            HashSet<string> comps = new HashSet<string>();
+            foreach (Dictionary<string, object> t in teams.Values)
+            {
+                if ((string)t["status"] != "on scene") continue;
+                Dictionary<string, object> cas = GetKey(casualties, t["casualty"]);
+                if (cas != null) comps.Add((string)cas["comp"]);
+            }
+            HashSet<string> now = new HashSet<string>();
+            foreach (KeyValuePair<string, Dictionary<string, object>> kv in nodes)
+            {
+                bool m = comps.Contains((string)kv.Value["comp"]) && !B(kv.Value, "failed");
+                kv.Value["maint"] = m;
+                if (m) now.Add(kv.Key);
+            }
+            foreach (string comp in comps.Where(c => !_maintPrev.Any(n => (string)nodes[n]["comp"] == c)))
+            {
+                List<string> tagged = now.Where(n => (string)nodes[n]["comp"] == comp).ToList();
+                if (tagged.Count > 0)
+                    Event("critical", "ship-systems", string.Format("EOOW: MAINTENANCE UNDERWAY in {0}: {1} tagged out. Re-route power to what they fed.",
+                                                                   comp, string.Join(", ", tagged)));
+            }
+            _maintPrev = now;
+        }
+
+        // Generators, switchboards and load centers carry power on; loads only take it.
+        bool IsBus(string nid)
+        {
+            string t = (string)nodes[nid]["type"];
+            return t == "gen" || t == "swbd" || t == "lc";
+        }
+
         HashSet<string> Island(string start)
         {
             HashSet<string> seen = new HashSet<string> { start };
@@ -260,12 +340,14 @@ namespace BridgeWarden
             {
                 string cur = frontier[frontier.Count - 1];
                 frontier.RemoveAt(frontier.Count - 1);
+                if (cur != start && !IsBus(cur))
+                    continue;
                 foreach (Dictionary<string, object> b in breakers.Values)
                 {
                     if (B(b, "closed") && (cur == (string)b["a"] || cur == (string)b["b"]))
                     {
                         string nxt = (string)b["a"] == cur ? (string)b["b"] : (string)b["a"];
-                        if (!seen.Contains(nxt) && !B(nodes[nxt], "failed"))
+                        if (!seen.Contains(nxt) && !B(nodes[nxt], "failed") && !B(nodes[nxt], "maint"))
                         {
                             seen.Add(nxt);
                             frontier.Add(nxt);
@@ -318,6 +400,8 @@ namespace BridgeWarden
                     {
                         t["status"] = "manning";
                         t["man_s"] = 0.0;
+                        t["target"] = Py.Num(t["home"]);
+                        t["activity"] = (string)t["activity"] == "asleep" ? "waking" : "leaving galley";
                     }
                 Event("critical", "bridge", "GENERAL QUARTERS, GENERAL QUARTERS. All hands man your battle stations.");
             }
@@ -325,7 +409,11 @@ namespace BridgeWarden
             {
                 foreach (Dictionary<string, object> t in teams.Values)
                     if (!B(t, "always") && ((string)t["status"] == "standby" || (string)t["status"] == "manning"))
+                    {
                         t["status"] = "unmanned";
+                        t["activity"] = "stood down";
+                        t["target"] = null;
+                    }
                 Event("info", "bridge", "Secure from General Quarters");
             }
         }
@@ -346,7 +434,7 @@ namespace BridgeWarden
         public double MaxSpeedKn()
         {
             int s = ShaftsOk();
-            return s == 2 ? Py.Num(SHIP["max_speed_kn"]) : s == 1 ? Py.Num(SHIP["one_shaft_speed_kn"]) : 0.0;
+            return s == 2 ? Py.Num(SHIP["flank_speed_kn"]) : s == 1 ? Py.Num(SHIP["one_shaft_speed_kn"]) : 0.0;   // physical cap
         }
 
         // max_speed_kn exactly as Python returns it (int 31 / 20 from SHIP, float 0.0): for the JSON view.
@@ -492,12 +580,19 @@ namespace BridgeWarden
             {
                 if ((string)t["status"] == "manning")
                 {
-                    t["man_s"] = N(t, "man_s") + dt;
-                    if (N(t, "man_s") >= MANNING_S)
-                    {
-                        t["status"] = "standby";
-                        Event("info", "damage-control", string.Format("DCA: {0} manned and ready", t["name"]));
-                    }
+                    double real = dt * real_per_sim;
+                    t["man_s"] = N(t, "man_s") + real;
+                    string act = S(t, "activity") ?? "";
+                    double delay = act == "waking" ? WAKE_S : act == "leaving galley" ? GALLEY_S : 0;
+                    if (N(t, "man_s") < delay) continue;
+                    t["activity"] = "running to station";
+                    double home = Py.Num(t["home"]), d = home - N(t, "pos"), step = RUN_FT_PER_S * real;
+                    if (Math.Abs(d) > step) { t["pos"] = N(t, "pos") + (d < 0 ? -step : step); continue; }
+                    t["pos"] = home;
+                    t["target"] = null;
+                    t["status"] = "standby";
+                    t["activity"] = "at station";
+                    Event("info", "damage-control", string.Format("DCA: {0} manned and ready ({1} s)", t["name"], Py.F(N(t, "man_s"), 0)));
                 }
             }
             if (!FiremainOk() && !_firemain_alerted && casualties.Values.Any(
@@ -514,7 +609,7 @@ namespace BridgeWarden
                 if ((st == "en route" || st == "returning") && t["target"] != null)
                 {
                     double d = N(t, "target") - N(t, "pos");
-                    double step = TEAM_FRAMES_PER_S * dt;
+                    double step = RUN_FT_PER_S * dt * real_per_sim;   // human pace in real seconds
                     if (Math.Abs(d) <= step)
                     {
                         t["pos"] = N(t, "target");
@@ -716,7 +811,20 @@ namespace BridgeWarden
             foreach (Dictionary<string, object> m in inbound.ToList())
             {
                 double prev = N(m, "range");
-                m["range"] = prev - INBOUND_KN * dt / 3600;
+                // Weave: the bearing drifts on a sine (an S-turn / curving approach), harder in the terminal phase.
+                double kn = Py.Num(Py.Get(m, "speed_kn", INBOUND_KN));
+                if (Py.Get(m, "bearing") != null)
+                {
+                    m["phase"] = Py.Num(Py.Get(m, "phase", 0.0)) + dt * Py.Num(Py.Get(m, "w", 0.0));
+                    double amp = Py.Num(Py.Get(m, "weave_deg_s", 0.0)) * (prev < 4 ? 2.0 : 1.0);
+                    m["bearing"] = Mod360(N(m, "bearing") + amp * Math.Cos(N(m, "phase")) * dt / Math.Max(1.0, prev));
+                }
+                if (S(m, "kind") == "aircraft")
+                {
+                    StepAircraft(m, dt);
+                    continue;
+                }
+                m["range"] = prev - kn * dt / 3600;
                 if (B(m, "detected"))
                     SoftKill(m, prev);
                 if (inbound.Contains(m) && N(m, "range") <= CIWS_NM && B(m, "detected") && !B(m, "ciws"))
@@ -768,6 +876,9 @@ namespace BridgeWarden
                     continue;
                 }
                 it["range"] = N(it, "range") + SM2_KN * dt / 3600;
+                // Curve to attack: the missile leaves at an offset bearing and turns onto the target as it closes.
+                double frac = Math.Min(1.0, N(it, "range") / Math.Max(0.1, N(tgt, "range")));
+                it["bearing"] = Mod360(N(tgt, "bearing") + Py.Num(Py.Get(it, "offset", 0.0)) * (1 - frac) * (1 - frac));
                 if (N(it, "range") >= N(tgt, "range"))
                 {
                     interceptors.Remove(it);
@@ -799,18 +910,74 @@ namespace BridgeWarden
             }
         }
 
-        // Inbounds are only DETECTED (and reported, shown, given to agents) once inside the 20 nm COP.
+        // Inbounds are only DETECTED (and reported, shown, given to agents) once inside the 20 nm COP. Each missile
+        // weaves on its own (random amplitude and period), so a salvo spreads out and curves in instead of flying a ray.
         public void Launch(string hostile_id, double range_nm, int count, double? bearing = null)
         {
             Dictionary<string, object> st = StateFor(hostile_id, 100.0, true, true, 99.0);
             for (int i = 0; i < count; i++)
             {
                 st["launched"] = Py.Int(st["launched"]) + 1;
-                inbound.Add(Py.D("id", hostile_id + "-V" + Py.Str(st["launched"]), "from", hostile_id, "detected", false,
-                                 "range", range_nm + i * 0.4, "bearing", bearing.HasValue ? (object)bearing.Value : null));
+                double b0 = bearing.HasValue ? bearing.Value : rng.NextDouble() * 360;
+                inbound.Add(Py.D("id", hostile_id + "-V" + Py.Str(st["launched"]), "from", hostile_id, "detected", false, "kind", "missile",
+                                 "range", range_nm + i * 0.4, "bearing", Mod360(b0 + (i - (count - 1) / 2.0) * 4), "speed_kn", INBOUND_KN,
+                                 "weave_deg_s", 3 + rng.NextDouble() * 6, "w", 0.04 + rng.NextDouble() * 0.06, "phase", rng.NextDouble() * 6.28));
             }
             DetectInbound();
         }
+
+        // A strike aircraft: flies in on a curving path, fires its missiles at AIRCRAFT_LAUNCH_NM, then turns away and
+        // leaves the picture. It is a target for SM-2 and CIWS like a missile, but never hits the ship itself.
+        public void LaunchAircraft(int count, double? bearing = null)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                _aircraft += 1;
+                double b0 = bearing.HasValue ? bearing.Value + i * 25 : rng.NextDouble() * 360;
+                inbound.Add(Py.D("id", "AC-" + _aircraft, "from", "AC-" + _aircraft, "detected", false, "kind", "aircraft",
+                                 "range", 30.0 + i * 2, "bearing", Mod360(b0), "speed_kn", AIRCRAFT_KN, "leg", "in", "missiles", 2,
+                                 "weave_deg_s", 20 + rng.NextDouble() * 20, "w", 0.02 + rng.NextDouble() * 0.03, "phase", rng.NextDouble() * 6.28));
+            }
+            DetectInbound();
+        }
+        int _aircraft;
+
+        void StepAircraft(Dictionary<string, object> a, double dt)
+        {
+            double kn = Py.Num(Py.Get(a, "speed_kn", AIRCRAFT_KN));
+            if (S(a, "leg") == "in")
+            {
+                a["range"] = N(a, "range") - kn * dt / 3600;
+                if (N(a, "range") <= AIRCRAFT_LAUNCH_NM)
+                {
+                    int n = Py.Int(Py.Get(a, "missiles", 2));
+                    Launch((string)a["id"], N(a, "range"), n, N(a, "bearing"));
+                    Event("critical", "defense", string.Format("TAO: aircraft {0} launched {1} missiles at {2} nm and is turning away",
+                                                              a["id"], n, Py.F(N(a, "range"), 1)));
+                    a["leg"] = "out";
+                }
+            }
+            else
+            {
+                a["range"] = N(a, "range") + kn * dt / 3600;
+                a["bearing"] = Mod360(N(a, "bearing") + 6 * dt / Math.Max(1.0, N(a, "range")));   // banking away
+                if (N(a, "range") > 24)
+                    inbound.Remove(a);
+            }
+        }
+
+        // A spread of torpedoes from a submarine nobody has seen (random bearing), up to 4 at once.
+        public void LaunchTorpedoes(int count, double range_nm, double? bearing = null)
+        {
+            _ghost += 1;
+            double b0 = bearing.HasValue ? bearing.Value : rng.NextDouble() * 360;
+            for (int k = 0; k < count; k++)
+                torpedoes.Add(Py.D("id", "SUB" + _ghost + "-T" + (k + 1), "from", "SUB" + _ghost, "range", range_nm + k * 0.15,
+                                   "bearing", Mod360(b0 + (k - (count - 1) / 2.0) * 6), "run_left", TORP_RUN_NM, "nixie_tried", false));
+            Event("critical", "asw", string.Format("TORPEDO, TORPEDO, TORPEDO: {0} torpedoes in the water, bearing {1}, {2} nm",
+                                                  count, F03(b0), Py.F(range_nm, 1)));
+        }
+        int _ghost;
 
         void DetectInbound()
         {
@@ -861,16 +1028,17 @@ namespace BridgeWarden
             if (N(st, "attack") >= 100 && Py.Int(st["launched"]) < 2)
             {
                 st["attack"] = 0.0;
-                for (int k = 0; k < 2; k++)
+                int salvo = Py.Int(Py.Get(st, "salvo", 2));
+                for (int k = 0; k < salvo; k++)
                 {
                     st["launched"] = Py.Int(st["launched"]) + 1;
                     torpedoes.Add(Py.D("id", c.id + "-T" + Py.Str(st["launched"]), "from", c.id, "range", c.range_nm,
-                                       "bearing", c.bearing, "run_left", TORP_RUN_NM, "nixie_tried", false));
+                                       "bearing", Mod360(c.bearing + (k - (salvo - 1) / 2.0) * 6), "run_left", TORP_RUN_NM, "nixie_tried", false));
                 }
                 c.hidden = false;
                 c.classification = "HOSTILE";
-                Event("critical", "asw", string.Format("TORPEDO, TORPEDO, TORPEDO: 2 torpedoes in the water, bearing {0}, {1} nm, from {2} (HOSTILE)",
-                                                      F03(c.bearing), Py.F(c.range_nm, 1), c.id));
+                Event("critical", "asw", string.Format("TORPEDO, TORPEDO, TORPEDO: {3} torpedoes in the water, bearing {0}, {1} nm, from {2} (HOSTILE)",
+                                                      F03(c.bearing), Py.F(c.range_nm, 1), c.id, salvo));
             }
         }
 
@@ -1051,11 +1219,12 @@ namespace BridgeWarden
             {
                 _sm += 1;
                 magazine -= 1;
-                Dictionary<string, object> sm = Py.D("id", "SM2-" + _sm, "weapon", "SM-2", "target", target, "range", 0.0, "bearing", Py.Get(m, "bearing"));
+                Dictionary<string, object> sm = Py.D("id", "SM2-" + _sm, "weapon", "SM-2", "target", target, "range", 0.0, "bearing", Py.Get(m, "bearing"),
+                                                     "offset", (k % 2 == 0 ? 1 : -1) * (25 + 10 * (k / 2)));
                 interceptors.Add(sm);
                 fired.Add(sm["id"]);
             }
-            double tti = N(m, "range") / (SM2_KN + INBOUND_KN) * 3600;
+            double tti = N(m, "range") / (SM2_KN + Py.Num(Py.Get(m, "speed_kn", INBOUND_KN))) * 3600;
             Event("critical", "defense", string.Format("BIRDS AWAY: {0}x SM-2 ({1}) at {2}, {3} nm, intercept in ~{4} s",
                                                       rounds, Py.Join(", ", fired), target, Py.F(N(m, "range"), 1), Py.F(tti, 0)));
             return Py.D("fired", fired);
@@ -1111,8 +1280,9 @@ namespace BridgeWarden
 
         // ------------------------------------------------------------------ governed actions
         public static readonly string[] SYSTEM_ACTIONS = { "set_emcon", "activate_defense", "close_breaker", "open_breaker", "dispatch_team", "set_gq",
-                                                           "engage_target" };
+                                                           "engage_target", "rig_casualty_power" };
         public static readonly Dictionary<string, string> SAFE_DEFAULTS = new Dictionary<string, string> {
+            { "rig_casualty_power", "No cable rigged (team stays at its station)" },
             { "set_emcon", "Keep current emissions posture" },
             { "activate_defense", "Do not activate (defenses stay in standby)" },
             { "close_breaker", "Leave breaker open" },
@@ -1155,6 +1325,11 @@ namespace BridgeWarden
                 Dictionary<string, object> t = GetKey(teams, Py.Get(@params, "team")) ?? new Dictionary<string, object>();
                 return string.Format("{0} {1} at frame {2}", Py.Str(Py.Get(t, "name")), Py.Str(Py.Get(t, "status")), Py.F(Py.Num(Py.Get(t, "pos", 0)), 0));
             }
+            if (action == "rig_casualty_power")
+            {
+                Dictionary<string, object> n = GetKey(nodes, Py.Get(@params, "equipment")) ?? new Dictionary<string, object>();
+                return string.Format("{0} {1}", Py.Str(Py.Get(@params, "equipment")), B(n, "powered") ? "powered" : "NO POWER");
+            }
             return "";
         }
 
@@ -1195,8 +1370,8 @@ namespace BridgeWarden
                         return "Mk 41 VLS not available (no power or damaged)";
                     if (interceptors.Any(i => (string)i["target"] == c.id))
                         return string.Format("{0} already has a {1} in flight", c.id, weapon);
-                    if (!(1 <= rounds && rounds <= 2) || rounds > mags[weapon])
-                        return string.Format("Rounds must be 1-2 and within {0} magazine ({1})", weapon, mags[weapon]);
+                    if (!(1 <= rounds && rounds <= 4) || rounds > mags[weapon])
+                        return string.Format("Rounds must be 1-4 and within {0} magazine ({1})", weapon, mags[weapon]);
                     return null;
                 }
                 string tid = target as string;
@@ -1211,7 +1386,7 @@ namespace BridgeWarden
                     return string.Format("{0} is already released, held for the SM-2 envelope", m["id"]);
                 if (interceptors.Any(i => (string)i["target"] == (string)m["id"]))
                     return string.Format("{0} already has SM-2 in flight", m["id"]);
-                if (!(1 <= rounds && rounds <= 2) || rounds > magazine)
+                if (!(1 <= rounds && rounds <= 4) || rounds > magazine)
                     return string.Format("Rounds must be 1-2 and within magazine ({0})", magazine);
             }
             if (action == "dispatch_team")
@@ -1232,7 +1407,78 @@ namespace BridgeWarden
                 if ((string)cas["status"] == "out" || (string)cas["status"] == "repaired")
                     return string.Format("{0} is already {1}", cas["id"], cas["status"]);
             }
+            if (action == "rig_casualty_power")
+            {
+                Dictionary<string, object> t = GetKey(teams, Py.Get(@params, "team"));
+                Dictionary<string, object> eq = GetKey(nodes, Py.Get(@params, "equipment")), src = GetKey(nodes, Py.Get(@params, "source"));
+                if (t == null || eq == null || src == null)
+                    return "Unknown team, equipment or source";
+                string st = (string)t["status"];
+                if (st != "standby" && st != "returning")
+                    return string.Format("{0} is not available ({1})", t["name"], st);
+                string ty = (string)eq["type"];
+                if (ty == "gen" || ty == "swbd" || ty == "lc")
+                    return "Casualty power cables feed equipment, not a bus";
+                if (B(eq, "failed"))
+                    return Py.Str(@params["equipment"]) + " is damaged: a cable cannot restore it (repair first)";
+                if (B(eq, "powered"))
+                    return Py.Str(@params["equipment"]) + " already has power";
+                if ((string)src["type"] != "lc" && (string)src["type"] != "swbd")
+                    return "Source must be a load center or switchboard";
+                if (!B(src, "powered") || B(src, "failed"))
+                    return Py.Str(@params["source"]) + " is not live";
+                if (breakers.ContainsKey("CP-" + Py.Str(@params["equipment"])))
+                    return "A casualty power cable to " + Py.Str(@params["equipment"]) + " is already rigged or being rigged";
+            }
             return null;
+        }
+
+        // ------------------------------------------------------------------ casualty power (patch cables)
+        // A repair team runs a temporary cable from a live load center / switchboard to equipment that lost its feed.
+        // It is a breaker named CP-<equipment>, normally open, that closes when the team finishes rigging (RIG_S).
+        public const double RIG_S = 30.0;
+
+        public Dictionary<string, object> RigCasualtyPower(string team_id, string equipment, string source)
+        {
+            Dictionary<string, object> t = teams[team_id];
+            Dictionary<string, object> prev = Py.D("team", team_id, "status", t["status"], "pos", t["pos"], "breaker", "CP-" + equipment);
+            string bid = "CP-" + equipment;
+            breakers[bid] = Py.D("id", bid, "a", source, "b", equipment, "closed", false, "normal", false,
+                                 "casualty_power", true, "team", team_id, "rig_s", 0.0);
+            int[] fr = Fr((string)nodes[equipment]["comp"]);
+            t["status"] = "en route";
+            t["target"] = (fr[0] + fr[1]) / 2.0;
+            t["casualty"] = null;
+            t["job"] = bid;
+            t["boundaries"] = null;
+            Event("info", "damage-control", string.Format("DCA: {0} away to rig casualty power {1} -> {2}", t["name"], source, equipment));
+            return prev;
+        }
+
+        // moveTeams: the DC picture is hidden (its own step moves teams when it runs), so move the rigging teams here.
+        void StepCasualtyPower(double dt, bool moveTeams)
+        {
+            foreach (Dictionary<string, object> b in breakers.Values.Where(x => B(x, "casualty_power") && !B(x, "closed")).ToList())
+            {
+                Dictionary<string, object> t = GetKey(teams, b["team"]);
+                if (t == null || Py.Str(Py.Get(t, "job")) != Py.Str(b["id"])) continue;
+                if (moveTeams && (string)t["status"] == "en route" && t["target"] != null)
+                {
+                    double d = N(t, "target") - N(t, "pos"), step = RUN_FT_PER_S * dt * real_per_sim;
+                    if (Math.Abs(d) <= step) { t["pos"] = N(t, "target"); t["status"] = "on scene"; }
+                    else t["pos"] = N(t, "pos") + (d < 0 ? -step : step);
+                }
+                if ((string)t["status"] != "on scene") continue;
+                b["rig_s"] = N(b, "rig_s") + dt;
+                if (N(b, "rig_s") < RIG_S) continue;
+                b["closed"] = true;
+                Flow();
+                t["status"] = "returning";
+                t["target"] = Py.Num(t["home"]);
+                t["job"] = null;
+                Event("info", "ship-systems", string.Format("EOOW: casualty power rigged, {0} -> {1}: {2} {3}", b["a"], b["b"], b["b"],
+                    Ok((string)b["b"]) ? "back on line" : "still without power"));
+            }
         }
 
         // Carry out an approved action. Returns its inverse, for rollback.
@@ -1268,6 +1514,8 @@ namespace BridgeWarden
             }
             if (action == "dispatch_team")
                 return Dispatch((string)@params["team"], (string)@params["casualty"]);
+            if (action == "rig_casualty_power")
+                return RigCasualtyPower((string)@params["team"], (string)@params["equipment"], (string)@params["source"]);
             if (action == "engage_target")
             {
                 object thing;
@@ -1285,7 +1533,8 @@ namespace BridgeWarden
             if (action == "set_gq")
             {
                 bool prev = gq;
-                SetGq(true);
+                object want = Py.Get(@params, "on");
+                SetGq(want == null || Py.Truthy(want));   // {"on": false} secures from GQ
                 return Py.D("gq", prev);
             }
             return new Dictionary<string, object>();
@@ -1310,6 +1559,15 @@ namespace BridgeWarden
                 SetBreaker((string)inverse["breaker"], Py.Truthy(inverse["closed"]));
             else if (action == "set_gq")
                 SetGq(Py.Truthy(Py.Get(inverse, "gq", false)));
+            else if (action == "rig_casualty_power")
+            {
+                Dictionary<string, object> t = teams[(string)inverse["team"]];
+                breakers.Remove(Py.Str(inverse["breaker"]));
+                t["status"] = "returning";
+                t["target"] = Py.Num(t["home"]);
+                t["job"] = null;
+                Flow();
+            }
             else if (action == "dispatch_team")
             {
                 Dictionary<string, object> t = teams[(string)inverse["team"]];
@@ -1331,6 +1589,8 @@ namespace BridgeWarden
                 StepDc(dt);
             if (on.Contains("nav"))
                 StepThreats(dt, world);
+            if (on.Contains("systems") || on.Contains("dc"))
+                StepCasualtyPower(dt, !on.Contains("dc"));
             Flow();
             foreach (KeyValuePair<string, int> kv in gen_load)
             {
@@ -1391,8 +1651,10 @@ namespace BridgeWarden
                     List<object> eng = new List<object>();
                     foreach (Dictionary<string, object> i in interceptors) if ((string)i["target"] == (string)m["id"]) eng.Add(i["id"]);
                     if (held.ContainsKey((string)m["id"])) eng.Add("released");
+                    double mk = Py.Num(Py.Get(m, "speed_kn", INBOUND_KN));
                     return (object)Py.D("id", m["id"], "from", m["from"], "range", Py.Round(N(m, "range"), 2), "bearing", Py.Get(m, "bearing"),
-                                        "engaged_by", eng, "eta_s", RoundI(N(m, "range") / INBOUND_KN * 3600));
+                                        "kind", S(m, "kind") ?? "missile", "speed_kn", mk, "leg", S(m, "leg"),
+                                        "engaged_by", eng, "eta_s", S(m, "kind") == "aircraft" ? (object)null : RoundI(N(m, "range") / mk * 3600));
                 })),
                 "defenses", defenses,
                 // Chance an inbound gets through: 0 when nothing is inbound. "if_attacked" is the defensive posture.
@@ -1402,6 +1664,7 @@ namespace BridgeWarden
                 "propulsion_ok", PropulsionOk(),
                 "shafts_ok", ShaftsOk(),
                 "max_speed_kn", MaxSpeedValue(),
+                "flank_speed_kn", ShaftsOk() == 2 ? SHIP["flank_speed_kn"] : MaxSpeedValue(),
                 "ship", SHIP,
                 "steering_ok", SteeringOk(),
                 "emcon_prediction", PredictEmcon(world),

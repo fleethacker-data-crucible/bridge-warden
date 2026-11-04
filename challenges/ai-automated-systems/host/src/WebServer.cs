@@ -157,7 +157,7 @@ namespace BridgeWarden
                     catch (FormatException ex) { SendJson(res, 422, Json.Write(Py.D("detail", ex.Message))); return; }
                 }
             }
-            try { SendJson(res, 200, Json.Write(_app.Api(req.HttpMethod, path, query, body))); }
+            try { SendJson(res, 200, _app.ApiJson(req.HttpMethod, path, query, body)); }
             catch (HttpError ex) { SendJson(res, ex.Status, Json.Write(Py.D("detail", ex.Message))); }
             catch (KeyNotFoundException ex) { SendJson(res, 404, Json.Write(Py.D("detail", ex.Message))); }
             catch (Exception ex)

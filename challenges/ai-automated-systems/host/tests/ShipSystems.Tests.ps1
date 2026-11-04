@@ -49,6 +49,57 @@ Describe 'Ship systems without Warden (test_shipsys.py)' {
         $sys.Overloaded() | Should -HaveCount 0
     }
 
+    It 'losing a load center: its equipment comes back on its alternate feeder' {
+        $sys = New-Object BridgeWarden.ShipSystems(7)
+        $sys.Fail('LC-4', 'test')
+        $sys.Ok('STEER') | Should -BeFalse
+        [void]$sys.SetBreaker('A-STEER', $true)                   # LC-3 feeds steering instead
+        $sys.Ok('STEER') | Should -BeTrue
+    }
+
+    It 'two feeders to one load do not tie their load centers' {
+        $sys = New-Object BridgeWarden.ShipSystems(7)
+        $sys.Fail('2SB', 'test')
+        [void]$sys.SetBreaker('A-CHW', $true)                     # CHW now fed from LC-2 (1SB) and LC-3 (dead)
+        $sys.Ok('CHW') | Should -BeTrue
+        $sys.Ok('SHAFT-1') | Should -BeFalse                      # LC-3 must not be back-fed through CHW
+    }
+
+    It 'power_routes lists the breakers that restore an item, best first' {
+        $w = New-Object BridgeWarden.World(10.0)
+        $w.sys.Fail('LC-4', 'test')
+        $r = [BridgeWarden.AgentTools]::RunTool($w, 'power_routes', (ConvertTo-BwObject @{ equipment = 'STEER' }))
+        $r['state'] | Should -Be 'NO POWER'
+        @($r['options'] | ForEach-Object { $_['close'][0] }) | Should -Contain 'A-STEER'
+    }
+
+    It 'off watch three teams are on duty; at GQ the rest run to their stations at human pace' {
+        $sys = New-Object BridgeWarden.ShipSystems(7)
+        @($sys.teams.Values | Where-Object { $_['status'] -eq 'standby' }).Count | Should -Be 3
+        $sys.teams['RT1']['activity'] | Should -Be 'asleep'
+        $sys.teams['RT3']['activity'] | Should -Be 'galley'
+        $sys.SetGq($true)
+        $sys.real_per_sim = 1.0                                   # 1 sim second = 1 real second
+        $start = $sys.teams['RT1']['pos']
+        for ($i = 0; $i -lt 17; $i++) { $sys.Step(1.0, $null, [string[]]@('dc')) }   # 15 s to wake, then 2 s running (station is ~4 s away)
+        $sys.teams['RT1']['activity'] | Should -Be 'running to station'
+        [Math]::Abs($sys.teams['RT1']['pos'] - $start) | Should -BeLessOrEqual (5 * [BridgeWarden.ShipSystems]::RUN_FT_PER_S + 1)
+        for ($i = 0; $i -lt 60; $i++) { $sys.Step(1.0, $null, [string[]]@('dc')) }
+        $sys.teams['RT1']['status'] | Should -Be 'standby'
+    }
+
+    It 'a repair team on scene tags its compartment out and the loads it fed need re-routing' {
+        $sys = New-Object BridgeWarden.ShipSystems(7)
+        $cas = $sys.AddCasualty('MER1', 'fire', 0.3, $null, '', $true)
+        [void]$sys.Dispatch('RT6', $cas['id'])
+        $sys.teams['RT6']['status'] = 'on scene'
+        $sys.Flow()
+        $sys.nodes['LC-3']['maint'] | Should -BeTrue                  # LC-3 lives in MER1
+        $sys.Ok('CHW') | Should -BeFalse                               # CHW (AMR1) was fed from LC-3
+        [void]$sys.SetBreaker('A-CHW', $true)                          # round the tagged-out space via LC-2
+        $sys.Ok('CHW') | Should -BeTrue
+    }
+
     It 'SPY radar needs chilled water' {
         $sys = New-Object BridgeWarden.ShipSystems(7)
         $sys.Ok('RADAR') | Should -BeTrue
@@ -58,9 +109,9 @@ Describe 'Ship systems without Warden (test_shipsys.py)' {
 
     It 'one shaft caps speed' {
         $sys = New-Object BridgeWarden.ShipSystems(7)
-        $sys.MaxSpeedKn() | Should -Be 31
+        $sys.MaxSpeedKn() | Should -Be 30
         $sys.Fail('SHAFT-2', 'test')
-        $sys.MaxSpeedKn() | Should -Be 20
+        $sys.MaxSpeedKn() | Should -Be 18
         $sys.PropulsionOk() | Should -BeTrue
     }
 
@@ -147,11 +198,11 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
         $cas = $world.sys.AddCasualty('MER2', 'fire', 0.8, $null, '', $false)
         $world.Step()
         $world.sys.nodes['SHAFT-2']['failed'] | Should -BeTrue
-        $world.sys.SetGq($true)                      # Repair 3 only mans up at General Quarters
-        for ($n = 0; $n -lt 25; $n++) { $world.Step() }
-        $world.sys.teams['R5']['status'] | Should -Be 'standby'
-        $it = New-BwIntent 'dca-01' 'dispatch_team' ([ordered]@{ team = 'R5'; casualty = $cas['id']; compartment = 'MER2'
-                boundaries = @(290, 348) }) 'team:R5'
+        $world.sys.SetGq($true)                      # RT7 is asleep aft: it wakes and runs to MER2 (~30 s real time)
+        for ($n = 0; $n -lt 40; $n++) { $world.Step() }
+        $world.sys.teams['RT7']['status'] | Should -Be 'standby'
+        $it = New-BwIntent 'dca-01' 'dispatch_team' ([ordered]@{ team = 'RT7'; casualty = $cas['id']; compartment = 'MER2'
+                boundaries = @(290, 348) }) 'team:RT7'
         Invoke-BwProcess $warden @($it)
         $it.status | Should -Be 'escalated'
         $it.policy_hits | Should -Contain 'PERSONNEL_NEED_HUMAN'
@@ -165,7 +216,7 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
         $warden = $S.Warden; $world = $S.World
         $world.sys.Fail('SHAFT-1', 'test')
         $world.sys.Fail('SHAFT-2', 'test')
-        $it = New-BwIntent 'nav-01' 'set_speed' @{ speed_kn = 16 } 'main_engine'
+        $it = New-BwIntent 'nav-01' 'set_speed' @{ speed_kn = 20 } 'main_engine'
         Invoke-BwProcess $warden @($it)
         $it.status | Should -Be 'rejected'
         $it.policy_hits | Should -Contain 'PROPULSION_LOST'
@@ -176,15 +227,15 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
         $view = $world.Cop()
         $text = 'Sure! ```json {"actions": [{"action": "set_emcon", "params": {"on": true}, "objective": "Go quiet", ' +
             '"rationale": "Hostile closing", "confidence": 0.8}, {"action": "launch_missiles", "params": {}}, ' +
-            '{"action": "set_heading", "params": {"heading": 200}}]} ```'
-        $pa = [BridgeWarden.LlmAgent]::ParseActions([BridgeWarden.LlmAgent]::JsonObj($text), $view, 'ew-01',
+            '{"action": "close_breaker", "params": {"breaker": "B-1"}}]} ```'
+        $pa = [BridgeWarden.LlmAgent]::ParseActions([BridgeWarden.LlmAgent]::JsonObj($text), $view, 'def-01',
             (ConvertTo-BwObject @{ call_id = 't' }))
         $intents = $pa.Item1
         $problems = $pa.Item2
         $actions = @($intents | ForEach-Object { $_.action })
         $actions | Should -HaveCount 2
         $actions[0] | Should -Be 'set_emcon'
-        $actions[1] | Should -Be 'set_heading'
+        $actions[1] | Should -Be 'close_breaker'
         @($problems | Where-Object { $_ -match 'launch_missiles' }).Count | Should -BeGreaterThan 0
         Invoke-BwProcess $warden @($intents)
         $intents[1].status | Should -Be 'rejected'
@@ -206,9 +257,9 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
     It 'second team to the same casualty is rejected' {
         $warden = $S.Warden; $world = $S.World
         $cas = $world.sys.AddCasualty('MER2', 'fire', 0.6, $null, '', $false)
-        [void]$world.sys.Dispatch('FS', $cas['id'])
-        $world.sys.teams['R2']['status'] = 'standby'      # manned, so only the double-assignment rule applies
-        $it = New-BwIntent 'dca-01' 'dispatch_team' ([ordered]@{ team = 'R2'; casualty = $cas['id'] }) 'team:R2'
+        [void]$world.sys.Dispatch('RT6', $cas['id'])
+        $world.sys.teams['RT2']['status'] = 'standby'      # manned, so only the double-assignment rule applies
+        $it = New-BwIntent 'dca-01' 'dispatch_team' ([ordered]@{ team = 'RT2'; casualty = $cas['id'] }) 'team:RT2'
         Invoke-BwProcess $warden @($it)
         $it.status | Should -Be 'rejected'
         $it.reasons[0] | Should -Match 'already has'
@@ -238,7 +289,7 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
 
     It 'unwarranted <action> by <agent> never reaches the operator' -ForEach @(
         @{ agent = 'def-01'; action = 'activate_defense'; params = @{ systems = @('CIWS') }; target = 'defense' }
-        @{ agent = 'ew-01'; action = 'set_emcon'; params = @{ on = $true }; target = 'emcon' }
+        @{ agent = 'def-01'; action = 'set_emcon'; params = @{ on = $true }; target = 'emcon' }
         @{ agent = 'pwr-01'; action = 'close_breaker'; params = @{ breaker = 'B-1L3' }; target = 'breaker:B-1L3' }
         @{ agent = 'col-01'; action = 'set_heading'; params = @{ heading = 120 }; target = 'rudder' }
         @{ agent = 'eng-01'; action = 'set_speed'; params = @{ speed_kn = 10 }; target = 'main_engine' }
@@ -274,8 +325,8 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
     It 'unmanned repair party cannot be sent but flying squad can' {
         $world = $S.World
         $cas = $world.sys.AddCasualty('AMR2', 'fire', 0.3, $null, '', $false)
-        $world.sys.Validate('dispatch_team', (ConvertTo-BwObject @{ team = 'R3'; casualty = $cas['id'] })) | Should -Match 'not manned'
-        $world.sys.Validate('dispatch_team', (ConvertTo-BwObject @{ team = 'FS'; casualty = $cas['id'] })) | Should -BeNullOrEmpty
+        $world.sys.Validate('dispatch_team', (ConvertTo-BwObject @{ team = 'RT3'; casualty = $cas['id'] })) | Should -Match 'not manned'
+        $world.sys.Validate('dispatch_team', (ConvertTo-BwObject @{ team = 'RT6'; casualty = $cas['id'] })) | Should -BeNullOrEmpty
     }
 
     It 'hostile track is classified over time' {
@@ -302,7 +353,7 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
         $warden = $S.Warden; $world = $S.World
         Invoke-BwEvent $world @{ hostile = @{ range_nm = 9 } }
         $world.contacts[(Get-HostileId $world)].classification = 'HOSTILE'
-        $it = New-BwIntent 'ew-01' 'set_emcon' @{ on = $true } 'emcon' @{ rationale = 'TN4999 is closing fast' }
+        $it = New-BwIntent 'def-01' 'set_emcon' @{ on = $true } 'emcon' @{ rationale = 'TN4999 is closing fast' }
         Invoke-BwProcess $warden @($it)
         $it.status | Should -Be 'rejected'
         $it.reasons[0] | Should -Match 'TN4999'
@@ -314,7 +365,7 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
         $warden.policies['require_llm_provenance'] = $true
         Invoke-BwEvent $world @{ hostile = @{ range_nm = 9 } }
         $world.contacts[(Get-HostileId $world)].classification = 'HOSTILE'
-        $forged = New-BwIntent 'ew-01' 'set_emcon' @{ on = $true } 'emcon' @{
+        $forged = New-BwIntent 'def-01' 'set_emcon' @{ on = $true } 'emcon' @{
             provenance = [ordered]@{ call_id = 'made-up'; reply_sha256 = ('0' * 64) } }
         Invoke-BwProcess $warden @($forged)
         $forged.status | Should -Be 'rejected'
@@ -336,15 +387,16 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
         $prompts = New-Object 'System.Collections.Generic.List[string]'
         [BridgeWarden.Llm]::PROVIDERS['local_chat'] = [BridgeWardenTests.Fakes]::Chat($turns, $false, $prompts)
         [Environment]::SetEnvironmentVariable('LLM_LOCAL_MODEL', 'test-model')
-        $rt = $warden.agents['ew-01']
+        $rt = $warden.agents['def-01']
         $rt.enabled = $true; $rt.min_gap_s = 0
+        $rt.identity.behavior = ''; $rt.identity.parent = $null   # the model path (a lookout is C#)
         $warden.Step()
         for ($n = 0; $n -lt 100; $n++) {
             if ([BridgeWarden.Py]::Truthy($rt.status['calls'])) { break }
             Start-Sleep -Milliseconds 20
         }
         $warden.Step()
-        $it = @($warden.intents.Values | Where-Object { $_.agent_id -eq 'ew-01' })[0]
+        $it = @($warden.intents.Values | Where-Object { $_.agent_id -eq 'def-01' })[0]
         $it.status | Should -Be 'escalated' -Because ($it.reasons -join '; ')
         $p = $it.provenance
         $p['model'] | Should -Be 'test-model'
@@ -457,11 +509,11 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
 
     It 'defense agent may only maneuver with something inbound' {
         $warden = $S.Warden; $world = $S.World
-        $it = New-BwIntent 'def-01' 'set_speed' @{ speed_kn = 31 } 'main_engine'
+        $it = New-BwIntent 'def-01' 'set_speed' @{ speed_kn = 28 } 'main_engine'
         Invoke-BwProcess $warden @($it)
         $it.policy_hits | Should -Contain 'NOT_WARRANTED'
         $world.sys.Launch('OTH', 12, 1, 40)
-        $it2 = New-BwIntent 'def-01' 'set_speed' @{ speed_kn = 31 } 'main_engine'
+        $it2 = New-BwIntent 'def-01' 'set_speed' @{ speed_kn = 28 } 'main_engine'
         Invoke-BwProcess $warden @($it2)
         @('executed', 'escalated') | Should -Contain $it2.status
     }
@@ -483,7 +535,7 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
     It 'running from a torpedo outlasts its fuel' {
         $world = $S.World
         $ss = $world.sys
-        $world.ship.speed = 31; $world.ship.cmd_speed = 31
+        $world.ship.speed = 30; $world.ship.cmd_speed = 30   # flank: a 50-kn torpedo closes at 20 kn and runs dry first
         $world.ship.heading = 270; $world.ship.cmd_heading = 270      # torpedo bearing 090: running directly away
         $ss.torpedoes.Add((ConvertTo-BwObject ([ordered]@{ id = 'T1'; from = 'X'; range = 4.0; bearing = 90.0; run_left = 9.0
                         nixie_tried = $true })))
@@ -515,14 +567,14 @@ Describe 'Ship systems governed by Warden (test_shipsys.py)' {
         $world.sys.SetGq($true)
         foreach ($t in $world.sys.teams.Values) { $t['status'] = 'standby' }
         $cas = @($world.sys.casualties.Keys)[0]
-        $it = New-BwIntent 'dca-01' 'dispatch_team' ([ordered]@{ team = 'R5'; casualty = $cas }) 'team:R5' @{
-            alternative = [ordered]@{ action = 'dispatch_team'; params = [ordered]@{ team = 'FS'; casualty = $cas }; rationale = 'closer' } }
+        $it = New-BwIntent 'dca-01' 'dispatch_team' ([ordered]@{ team = 'RT7'; casualty = $cas }) 'team:RT7' @{
+            alternative = [ordered]@{ action = 'dispatch_team'; params = [ordered]@{ team = 'RT6'; casualty = $cas }; rationale = 'closer' } }
         Invoke-BwProcess $warden @($it)
         $esc = Get-EscFor $warden $it
         $proposal = Invoke-BwPrivate $warden 'Proposal' @($esc)
         ([string]$proposal['alternative']['value']).StartsWith('dispatch_team') | Should -BeTrue
         [void]$warden.DecideEscalation($esc.id, $false, 'operator', 'b')
-        $world.sys.teams['FS']['casualty'] | Should -Be $cas
-        $world.sys.teams['R5']['casualty'] | Should -BeNullOrEmpty
+        $world.sys.teams['RT6']['casualty'] | Should -Be $cas
+        $world.sys.teams['RT7']['casualty'] | Should -BeNullOrEmpty
     }
 }

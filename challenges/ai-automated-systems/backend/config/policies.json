@@ -1,5 +1,7 @@
 {
   "min_cpa_nm": 1.0,
+  "reflex_fallback": true,
+  "reflex_deadline_s": 6,
   "cpa_buffer_nm": 0.3,
   "critical_cpa_nm": 0.5,
   "big_turn_deg": 30,
@@ -15,6 +17,9 @@
   "system_check_timeout_s": 120,
   "system_check_retry_s": 30,
   "system_check_max_missed": 2,
+  "system_checks": false,
+  "omission_grace_s": 45,
+  "training_starts_at_trust": 50,
   "deny": [
     {
       "id": "ENERGY_NO_PROPULSION_CONTROL",

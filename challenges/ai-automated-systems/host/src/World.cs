@@ -52,20 +52,15 @@ namespace BridgeWarden
         public static double Radians(double deg) { return deg * Math.PI / 180.0; }
 
         // A line of storm cells 7-13 nm ahead and to starboard, drifting toward the ship's track.
+        // One isolated thunderstorm ahead of the ship, somewhere off either bow (2026-10-26: was a five-cell squall
+        // line). Strong core, drifting with the wind. Kept as SquallLine for its callers.
         public static List<object> SquallLine(OwnShip ship, int rng_seed = 3)
         {
-            Random rnd = new Random(rng_seed);
-            List<object> outl = new List<object>();
-            double[][] spec = { new double[] { 15, 9, 2.2, 0.9 }, new double[] { 35, 8, 1.8, 0.75 }, new double[] { 55, 10, 2.5, 0.6 },
-                                new double[] { -5, 12, 1.6, 0.5 }, new double[] { 75, 12, 2.0, 0.45 } };
-            for (int i = 0; i < spec.Length; i++)
-            {
-                double brg = spec[i][0], r = spec[i][1], rad = spec[i][2], inten = spec[i][3];
-                double b = Radians(ship.heading + brg + (-4 + 8 * rnd.NextDouble()));
-                outl.Add(Py.D("id", "WX" + (i + 1), "x", ship.x + r * Math.Sin(b), "y", ship.y + r * Math.Cos(b),
-                              "r", rad, "intensity", inten, "course", 290, "speed", 14));
-            }
-            return outl;
+            Random rnd = new Random(rng_seed + (int)(Math.Abs(ship.x * 7 + ship.y * 13)) % 1000);
+            double brg = ship.heading + (-45 + 90 * rnd.NextDouble()), r = 8 + 5 * rnd.NextDouble();
+            double b = Radians(brg);
+            return new List<object> { Py.D("id", "WX" + (1 + rnd.Next(99)), "x", ship.x + r * Math.Sin(b), "y", ship.y + r * Math.Cos(b),
+                                           "r", 2.6 + rnd.NextDouble(), "intensity", 0.92, "course", 290, "speed", 14) };
         }
     }
 
@@ -91,9 +86,9 @@ namespace BridgeWarden
         public double x = 0.0;
         public double y = 0.0;
         public double heading = 90.0;
-        public double speed = 14.0;
+        public double speed = 16.0;
         public double cmd_heading = 90.0;
-        public double cmd_speed = 14.0;
+        public double cmd_speed = 16.0;
         public double engine_temp = 84.0;
         public double fault_heat = 0.0;
         public double power_margin_kw = 0.0;
@@ -136,10 +131,12 @@ namespace BridgeWarden
         static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
         public const double TURN_RATE_DPS = 1.0;       // degrees per sim second
-        public const double ACCEL_KN_PS = 0.05;        // knots per sim second
+        public const double ACCEL_KN_PS = 0.3;         // knots per sim second: 16 to 30 kn in about 45 s (gas turbines)
+        public const double DECEL_KN_PS = 0.25;        // slowing (backing down helps): 30 to 0 kn in about 2 min
         public const double ROUTE_HEADING = 90.0;      // planned track: due east along y = 0
 
         public double time_scale;
+        public double base_scale;      // the 1x time scale (time_scale = base_scale x presenter speed)
         public double sim_time;
         public OwnShip ship;
         public Environment env;
@@ -152,6 +149,7 @@ namespace BridgeWarden
         public World(double time_scale = 10.0)
         {
             this.time_scale = time_scale;
+            base_scale = time_scale;
             Reset();
         }
 
@@ -241,6 +239,7 @@ namespace BridgeWarden
         public void Step(double ticks = 1.0, ICollection<string> active = null)
         {
             double dt = time_scale * ticks;          // sim seconds
+            sys.real_per_sim = 1.0 / Math.Max(0.001, base_scale);   // team running pace is real-time at 1x
             ICollection<string> on = (active != null && active.Count > 0) ? active : new HashSet<string> { "nav", "systems", "dc" };
             OwnShip s = ship;
             double target_temp;
@@ -260,7 +259,7 @@ namespace BridgeWarden
             double dh = sys.SteeringOk() ? WorldMath.AngleDiff(s.cmd_heading, s.heading) : 0.0;
             s.heading = WorldMath.Wrap360(s.heading + Math.Max(-TURN_RATE_DPS * dt, Math.Min(TURN_RATE_DPS * dt, dh)));
             double ds = Math.Min(s.cmd_speed, sys.MaxSpeedKn()) - s.speed;      // one shaft caps speed; none, the ship coasts
-            s.speed += Math.Max(-ACCEL_KN_PS * dt, Math.Min(ACCEL_KN_PS * dt, ds));
+            s.speed = Math.Max(0.0, s.speed + Math.Max(-DECEL_KN_PS * dt, Math.Min(ACCEL_KN_PS * dt, ds)));
             double[] v = WorldMath.Velocity(s.heading, s.speed);
             s.x += v[0] * dt / 3600;
             s.y += v[1] * dt / 3600;
@@ -343,9 +342,17 @@ namespace BridgeWarden
                 double t_h = Py.Num(Py.Get(p, "collision_in_min", 15)) / 60;
                 // Put the contact on a course that meets own ship's projected position at t_h.
                 double[] o = WorldMath.Velocity(s.heading, s.speed);
-                double mx = s.x + o[0] * t_h, my = s.y + o[1] * t_h;
-                double course = Py.Num(p["course"]), speed = Py.Num(p["speed"]);
+                // relative_course: the contact's course relative to own ship's heading (180 = reciprocal: head-on, dead ahead).
+                double course = p.ContainsKey("relative_course") ? WorldMath.Wrap360(s.heading + Py.Num(p["relative_course"])) : Py.Num(p["course"]);
+                double speed = Py.Num(p["speed"]);
                 double[] cv = WorldMath.Velocity(course, speed);
+                if (p.ContainsKey("start_range_nm"))
+                {
+                    // Collision drills start at a set range: the meeting time follows from the closing speed.
+                    double rel = Math.Sqrt((cv[0] - o[0]) * (cv[0] - o[0]) + (cv[1] - o[1]) * (cv[1] - o[1]));
+                    t_h = Py.Num(p["start_range_nm"]) / Math.Max(1.0, rel);
+                }
+                double mx = s.x + o[0] * t_h, my = s.y + o[1] * t_h;
                 double off = Py.Num(Py.Get(p, "offset_nm", 0.0));
                 MakeRoom();
                 object pid = Py.Get(p, "id");
@@ -400,29 +407,73 @@ namespace BridgeWarden
                 double brg = WorldMath.Radians(Py.Num(Py.Get(p, "bearing", -60)) + s.heading);
                 double r = Py.Num(Py.Get(p, "range_nm", 9.0));
                 MakeRoom();
+                bool detected = Py.Truthy(Py.Get(p, "detected", false));   // sonar already holds it: on the COP now
                 Contact c = new Contact { id = NextTrack(), x = s.x + r * Math.Sin(brg), y = s.y + r * Math.Cos(brg), course = 0,
-                                          speed = Py.Num(Py.Get(p, "speed", 12)), kind = "hostile", classification = "UNKNOWN",
-                                          domain = "subsurface", hidden = true };
+                                          speed = Py.Num(Py.Get(p, "speed", 12)), kind = "hostile",
+                                          classification = detected ? Py.Str(Py.Get(p, "classification", "SUSPECT")) : "UNKNOWN",
+                                          domain = "subsurface", hidden = !detected };
                 contacts[c.id] = c;
                 UpdateDerived();
-                return string.Format("Presenter: submarine {0} placed {1} nm, bearing {2} (submerged, not yet detected)",
-                                     c.id, F(c.range_nm, 1), F03(c.bearing));
+                return detected
+                    ? string.Format("Sonar: submarine contact {0}, {1}, bearing {2}, {3} nm (detected)", c.id, c.classification.ToLowerInvariant(),
+                                    F03(c.bearing), F(c.range_nm, 1))
+                    : string.Format("Presenter: submarine {0} placed {1} nm, bearing {2} (submerged, not yet detected)",
+                                    c.id, F(c.range_nm, 1), F03(c.bearing));
             }
             if (ev.ContainsKey("inbound"))
             {
                 // Launched from over the horizon, beyond the 20 nm COP: nobody sees it until it crosses 20 nm.
                 Dictionary<string, object> p = Py.DictOrEmpty(ev["inbound"]);
-                double brg = WorldMath.Wrap360(ship.heading + Py.Num(Py.Get(p, "relative_bearing", 40)));
+                double brg = Py.Truthy(Py.Get(p, "random")) ? new Random().NextDouble() * 360
+                    : WorldMath.Wrap360(ship.heading + Py.Num(Py.Get(p, "relative_bearing", 40)));
                 double rng = Py.Num(Py.Get(p, "range_nm", 28.0));
                 int count = Py.Int(Py.Get(p, "count", 2));
                 sys.Launch("OTH", rng, count, brg);
                 return string.Format("Presenter: {0} inbound launched from {1} nm (beyond the COP), bearing {2}. Not yet detected: enters the COP in ~{3} s",
                                      count, F(rng, 0), F03(brg), F((rng - 20) / 500 * 3600, 0));
             }
+            if (ev.ContainsKey("aircraft"))
+            {
+                Dictionary<string, object> p = Py.DictOrEmpty(ev["aircraft"]);
+                int n = Py.Int(Py.Get(p, "count", 1));
+                sys.LaunchAircraft(n);
+                return string.Format("Presenter: {0} strike aircraft inbound from a random bearing (30 nm, not yet on the COP)", n);
+            }
+            if (ev.ContainsKey("torpedo_spread"))
+            {
+                Dictionary<string, object> p = Py.DictOrEmpty(ev["torpedo_spread"]);
+                sys.LaunchTorpedoes(Py.Int(Py.Get(p, "count", 4)), Py.Num(Py.Get(p, "range_nm", 5.0)));
+                return "Presenter: torpedo spread from an unseen submarine";
+            }
+            if (ev.ContainsKey("friendly"))
+            {
+                // A friendly warship on a collision course from a random direction (never more than two at once).
+                int have = contacts.Values.Count(c => c.classification == "FRIENDLY");
+                if (have >= 2) return "Presenter: already two friendly ships closing; not adding another";
+                Random r = new Random();
+                double course = r.NextDouble() * 360, speed = 12 + r.Next(0, 12), mins = 8 + r.Next(0, 10);
+                return ApplyEvent(Py.D("spawn_contact", Py.D("course", course, "speed", speed, "collision_in_min", mins, "start_range_nm", 5.0,
+                                                             "classification", "FRIENDLY", "offset_nm", (r.NextDouble() - 0.5) * 0.6)));
+            }
             if (ev.ContainsKey("engine_loss"))
             {
                 sys.AddCasualty("MER2", "equipment", 0.0, new string[] { "SHAFT-2" }, "GTM 2A/2B casualty, low lube oil pressure");
                 return "Loss of Shaft 2 (GTM 2A/2B)";
+            }
+            if (ev.ContainsKey("fail_nodes"))         // several at once (one casualty per node, in its own compartment)
+            {
+                Dictionary<string, object> p = Py.DictOrEmpty(ev["fail_nodes"]);
+                List<string> ids = Py.ListOrEmpty(p["nodes"]).Select(x => Py.Str(x)).ToList();
+                foreach (string id in ids)
+                    sys.AddCasualty(Py.Str(sys.nodes[id]["comp"]), "equipment", 0.0, new string[] { id }, Py.Str(Py.Get(p, "reason", "equipment casualty")));
+                return "Equipment casualties: " + string.Join(", ", ids.ToArray()) + " (" + Py.Str(Py.Get(p, "reason", "")) + ")";
+            }
+            if (ev.ContainsKey("fail_node"))
+            {
+                Dictionary<string, object> p = Py.DictOrEmpty(ev["fail_node"]);
+                sys.AddCasualty(Py.Str(sys.nodes[Py.Str(p["node"])]["comp"]), "equipment", 0.0, new string[] { Py.Str(p["node"]) },
+                                Py.Str(Py.Get(p, "reason", "equipment casualty")));
+                return "Equipment casualty: " + Py.Str(p["node"]) + " (" + Py.Str(Py.Get(p, "reason", "")) + ")";
             }
             if (ev.ContainsKey("casualty"))
             {

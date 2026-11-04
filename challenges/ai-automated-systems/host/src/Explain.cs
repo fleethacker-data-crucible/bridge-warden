@@ -1,7 +1,7 @@
 // Port of warden/explain.py.
 // Plain-language explanations for operators, produced through the LLM wrapper (Llm.cs).
 //
-// All decisions are made by deterministic policy or a human, never by a language model.
+// These texts explain; they decide nothing. (Decisions come from the picture deciders, checked by Warden, or a human.)
 // These helpers only gather the facts for a named task and store the text plus its source
 // (live - local - cache - fallback) on the record, so the UI can show what produced it.
 using System;
@@ -38,13 +38,15 @@ namespace BridgeWarden
             if (intent.action == "engage_target")
                 return "fire " + Py.Str(Py.Get(p, "rounds", 2)) + " round(s) at " + Py.Str(Py.Get(p, "target"));
             if (intent.action == "set_gq")
-                return "sound General Quarters";
+                return Py.Get(p, "on") is bool && !(bool)Py.Get(p, "on") ? "secure from General Quarters" : "sound General Quarters";
             if (intent.action == "set_emcon")
                 return Py.Truthy(Py.Get(p, "on")) ? "set EMCON (silence emitters)" : "lift EMCON";
             if (intent.action == "activate_defense")
                 return "weapons free: " + Py.Join(", ", Py.ListOrEmpty(Py.Get(p, "systems", new List<object>())));
             if (intent.action == "close_breaker" || intent.action == "open_breaker")
                 return (intent.action == "close_breaker" ? "close" : "open") + " " + Py.Str(Py.Get(p, "breaker"));
+            if (intent.action == "rig_casualty_power")
+                return "rig casualty power cable " + Py.Str(Py.Get(p, "source")) + " -> " + Py.Str(Py.Get(p, "equipment")) + " (" + Py.Str(Py.Get(p, "team")) + ")";
             if (intent.action == "dispatch_team")
             {
                 object bo = Py.Get(p, "boundaries");

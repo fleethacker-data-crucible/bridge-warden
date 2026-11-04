@@ -1,11 +1,161 @@
 {
   "agents": [
     {
+      "id": "tao-01",
+      "cop": "nav",
+      "tier": "decider",
+      "name": "Tactical Action Officer",
+      "role": "nav_tao",
+      "vendor": "Local LLM",
+      "autonomy_level": 2,
+      "priority": 97,
+      "read_scopes": [
+        "cop.ownship",
+        "cop.contacts",
+        "cop.environment",
+        "cop.route",
+        "cop.threats",
+        "ship.systems"
+      ],
+      "tools": [],
+      "resource_quota": {
+        "intents_per_min": 30
+      },
+      "description": "You command the Navigation picture. Six C# lookouts (Collision Avoidance, Weather Routing, Track Keeping, Self-Defense, Launch Control, Undersea Warfare) report alerts with ready-made options and their predicted results. You choose; the lookout carries out your choice and Bridge Warden checks it against the rules first. Ship survival first (inbound weapons, then collision), then the fight, then weather, then the schedule."
+    },
+    {
+      "id": "col-01",
+      "cop": "nav",
+      "name": "Collision Avoidance",
+      "role": "collision",
+      "vendor": "C# lookout",
+      "autonomy_level": 3,
+      "priority": 90,
+      "read_scopes": [
+        "cop.ownship",
+        "cop.contacts",
+        "sensor.radar",
+        "sensor.ais"
+      ],
+      "tools": [
+        "set_heading",
+        "set_speed"
+      ],
+      "action_limits": {
+        "set_heading": {
+          "max_delta_deg": 45
+        },
+        "set_speed": {
+          "min_kn": 0,
+          "max_kn": 30
+        }
+      },
+      "resource_quota": {
+        "intents_per_min": 12
+      },
+      "description": "C# lookout. Watches every non-hostile contact's closest point of approach. When one will pass under 1 nm within 30 minutes it reports, with turn options (right turns first, per the Rules of the Road) and speed options, each with its predicted closest approach.",
+      "tier": "sub",
+      "parent": "tao-01",
+      "behavior": "lookout"
+    },
+    {
+      "id": "wx-01",
+      "cop": "nav",
+      "name": "Weather Routing",
+      "role": "weather",
+      "vendor": "C# lookout",
+      "autonomy_level": 2,
+      "priority": 60,
+      "read_scopes": [
+        "cop.ownship",
+        "cop.environment",
+        "cop.route"
+      ],
+      "tools": [
+        "set_heading",
+        "set_speed"
+      ],
+      "action_limits": {
+        "set_heading": {
+          "max_delta_deg": 40
+        },
+        "set_speed": {
+          "min_kn": 0,
+          "max_kn": 30
+        }
+      },
+      "resource_quota": {
+        "intents_per_min": 4
+      },
+      "description": "C# lookout. Watches the weather radar, wind and visibility. Heavy weather ahead: turn or slow-down options with the predicted clearance. Fog: safe-speed options (Rule 19).",
+      "tier": "sub",
+      "parent": "tao-01",
+      "behavior": "lookout"
+    },
+    {
+      "id": "nav-01",
+      "cop": "nav",
+      "name": "Navigation (Track Keeping)",
+      "role": "navigation",
+      "vendor": "C# lookout",
+      "autonomy_level": 3,
+      "priority": 40,
+      "read_scopes": [
+        "cop.ownship",
+        "cop.route"
+      ],
+      "tools": [
+        "set_heading",
+        "set_speed"
+      ],
+      "action_limits": {
+        "set_heading": {
+          "max_delta_deg": 30
+        },
+        "set_speed": {
+          "min_kn": 0,
+          "max_kn": 30
+        }
+      },
+      "resource_quota": {
+        "intents_per_min": 12
+      },
+      "description": "C# lookout. When nothing threatens the ship it offers the return to the planned route and the 16-knot schedule, but only when the way back is clear of ships and heavy weather.",
+      "tier": "sub",
+      "parent": "tao-01",
+      "behavior": "lookout"
+    },
+    {
+      "id": "lch-01",
+      "cop": "nav",
+      "tier": "sub",
+      "parent": "tao-01",
+      "behavior": "lookout",
+      "name": "Targeting & Launch",
+      "role": "launch",
+      "vendor": "C# lookout",
+      "autonomy_level": 2,
+      "priority": 89,
+      "read_scopes": [
+        "cop.ownship",
+        "cop.contacts",
+        "cop.threats",
+        "ship.systems"
+      ],
+      "tools": [
+        "engage_target"
+      ],
+      "resource_quota": {
+        "intents_per_min": 6
+      },
+      "description": "C# lookout. When a surface track is classified HOSTILE, inside Harpoon range, with nothing in flight at it, it offers return fire (1 or 2 Harpoons) or holding fire. Never at SUSPECT or UNKNOWN tracks."
+    },
+    {
       "id": "def-01",
       "cop": "nav",
-      "name": "Ship Self-Defense",
+      "name": "Self-Defense & EMCON",
       "role": "defense",
-      "vendor": "Local LLM",
+      "vendor": "C# lookout",
       "autonomy_level": 2,
       "priority": 95,
       "read_scopes": [
@@ -19,28 +169,32 @@
         "engage_target",
         "set_heading",
         "set_speed",
-        "set_gq"
+        "set_gq",
+        "set_emcon"
       ],
       "action_limits": {
         "set_heading": {
           "max_delta_deg": 180
         },
         "set_speed": {
-          "min_kn": 4,
-          "max_kn": 31
+          "min_kn": 0,
+          "max_kn": 30
         }
       },
       "resource_quota": {
         "intents_per_min": 8
       },
-      "description": "You are the ship self-defense agent reporting to the TAO (anti-air and surface warfare). Your job is to keep the ship afloat and fighting. When inbound missiles are on the COP: request SM-2 launch (engage_target, 2 rounds) at each inbound inside the SM-2 envelope with no sm2_in_flight, activate every defense that is \"ready\" in one activate_defense, recommend General Quarters if not set, and evasive maneuvering (threat about 45 degrees off the bow, maximum speed). Return fire: engage a track classified HOSTILE (surface) with Harpoon so it cannot fire again. ECM radiates and breaks EMCON; say so. When there are no threats, do nothing."
+      "description": "C# lookout. Inbound missiles: fight-and-evade, fight, or soft-kill packages (SM-2, ready defenses, General Quarters, a hard turn at speed). SUSPECT or HOSTILE track: EMCON and General Quarters. Picture clear: stand down.",
+      "tier": "sub",
+      "parent": "tao-01",
+      "behavior": "lookout"
     },
     {
       "id": "asw-01",
       "cop": "nav",
       "name": "Undersea Warfare",
       "role": "asw",
-      "vendor": "Local LLM",
+      "vendor": "C# lookout",
       "autonomy_level": 2,
       "priority": 94,
       "read_scopes": [
@@ -60,53 +214,47 @@
           "max_delta_deg": 180
         },
         "set_speed": {
-          "min_kn": 4,
-          "max_kn": 31
+          "min_kn": 0,
+          "max_kn": 30
         }
       },
       "resource_quota": {
         "intents_per_min": 6
       },
-      "description": "You are the undersea warfare (ASW) agent reporting to the TAO. When a submarine (domain subsurface) or a torpedo is on the COP: stream the Nixie torpedo decoy, recommend General Quarters, and against a torpedo in the water turn AWAY from it at maximum speed so it runs out of fuel (check with torpedo_evasion). Return fire with ASROC only at a submarine classified HOSTILE. When there is no submarine or torpedo, do nothing."
+      "description": "C# lookout. Torpedo in the water: the run-away heading at the speed that outruns it, the Nixie decoy and General Quarters. Submarine: Nixie and GQ, plus ASROC when it is HOSTILE and in range.",
+      "tier": "sub",
+      "parent": "tao-01",
+      "behavior": "lookout"
     },
     {
-      "id": "col-01",
-      "cop": "nav",
-      "name": "Collision Avoidance",
-      "role": "collision",
+      "id": "eoow-01",
+      "cop": "systems",
+      "tier": "decider",
+      "name": "Engineering Officer of the Watch",
+      "role": "eoow",
       "vendor": "Local LLM",
-      "autonomy_level": 3,
-      "priority": 90,
+      "autonomy_level": 2,
+      "priority": 87,
       "read_scopes": [
         "cop.ownship",
         "cop.contacts",
-        "sensor.radar",
-        "sensor.ais"
+        "cop.environment",
+        "cop.route",
+        "cop.threats",
+        "ship.systems"
       ],
-      "tools": [
-        "set_heading",
-        "set_speed"
-      ],
-      "action_limits": {
-        "set_heading": {
-          "max_delta_deg": 45
-        },
-        "set_speed": {
-          "min_kn": 4,
-          "max_kn": 18
-        }
-      },
+      "tools": [],
       "resource_quota": {
-        "intents_per_min": 12
+        "intents_per_min": 30
       },
-      "description": "You are the collision avoidance agent. Keep closest point of approach (CPA) at or above 1.0 nm from every non-hostile contact. Act only when a contact has cpa_nm below 1.0 and tcpa_min between 0 and 30. Under COLREGs, for a vessel crossing from starboard you are the give-way vessel: alter course to starboard (increase heading) by 20-40 degrees and/or slow to about 8 kn. When every contact is clear, do nothing."
+      "description": "You command the Ship Systems picture. C# lookouts (Electrical Plant, Engine Health, Energy) report alerts with ready-made options and their predicted results: breaker re-routes, bringing the standby generator on line, patch cables (casualty power) rigged by a repair team, speed for engine health. You choose; the lookout carries out your choice and Bridge Warden checks it first. Keep vital equipment powered (steering and shafts first, then the radar cooling and the defenses), never overload a generator, protect the engine, fuel last."
     },
     {
       "id": "pwr-01",
       "cop": "systems",
       "name": "Electrical Plant",
       "role": "power",
-      "vendor": "Local LLM",
+      "vendor": "C# lookout",
       "autonomy_level": 2,
       "priority": 85,
       "read_scopes": [
@@ -114,59 +262,23 @@
       ],
       "tools": [
         "close_breaker",
-        "open_breaker"
+        "open_breaker",
+        "rig_casualty_power"
       ],
       "resource_quota": {
         "intents_per_min": 8
       },
-      "description": "You are the electrical plant agent reporting to the EOOW of USS Arleigh Burke (DDG-51): three ship-service gas turbine generators (SSGTG-1/2/3) on switchboards 1SB/2SB/3SB feeding load centers LC-1..LC-4. When equipment shows NO POWER, or a generator is above 100 percent load, find a breaker lineup that restores the vital loads (SHAFT-1, SHAFT-2, STEER, then CHW for the SPY-1D radar) without overloading any generator. Bringing the standby SSGTG-3 on line (B-G3) is often needed. Verify every candidate lineup with power_lineup before recommending it; recommend each breaker as a separate close_breaker action (up to 4). When nothing is unpowered or overloaded, do nothing."
-    },
-    {
-      "id": "dca-01",
-      "cop": "dc",
-      "name": "Damage Control",
-      "role": "damage_control",
-      "vendor": "Local LLM",
-      "autonomy_level": 2,
-      "priority": 88,
-      "read_scopes": [
-        "ship.systems"
-      ],
-      "tools": [
-        "dispatch_team",
-        "set_gq"
-      ],
-      "resource_quota": {
-        "intents_per_min": 8
-      },
-      "description": "You are the damage control assistant (DCA). For each casualty with no team_assigned, send the standby repair party that can reach the casualty fastest (check with dc_transit; one dispatch_team per casualty). Only teams in standby_teams are manned; Repair 2 (fwd), 8 (electronics), 5 (main space) and 3 (aft) man up only at General Quarters, the duty Flying Squad (FS) is always ready. Main space fires (MER1, MER2, AMR1, AMR2) belong to Repair 5 once manned. If there is any casualty and gq is false, also recommend set_gq. \"reported\" casualties are still being investigated; you may send a team to them. Fires and floods spread to the next compartment if nobody sets boundaries. If firemain_ok is false, say so. When every casualty has a team, do nothing."
-    },
-    {
-      "id": "ew-01",
-      "cop": "nav",
-      "name": "EW / EMCON",
-      "role": "ew",
-      "vendor": "Local LLM",
-      "autonomy_level": 2,
-      "priority": 80,
-      "read_scopes": [
-        "cop.threats",
-        "ship.systems"
-      ],
-      "tools": [
-        "set_emcon"
-      ],
-      "resource_quota": {
-        "intents_per_min": 4
-      },
-      "description": "You are the electronic warfare / emissions control officer reporting to the TAO. If a contact is classified SUSPECT or HOSTILE and emcon_set is false, recommend set_emcon on, citing emcon_prediction (minutes until the hostile reaches the EMCON radius and the detection risk by then). If emcon_set is already true, or there are no hostiles, do nothing."
+      "description": "C# lookout. Equipment without power: breaker re-routes (each checked for generator overload), the standby generator, or a patch cable (casualty power) rigged by a repair team. Overloaded generator: load-sharing options. Repairs done: back to the normal lineup.",
+      "tier": "sub",
+      "parent": "eoow-01",
+      "behavior": "lookout"
     },
     {
       "id": "eng-01",
       "cop": "systems",
       "name": "Engine Health",
       "role": "engine",
-      "vendor": "Local LLM",
+      "vendor": "C# lookout",
       "autonomy_level": 3,
       "priority": 70,
       "read_scopes": [
@@ -178,77 +290,24 @@
       ],
       "action_limits": {
         "set_speed": {
-          "min_kn": 4,
-          "max_kn": 18
+          "min_kn": 0,
+          "max_kn": 30
         }
       },
       "resource_quota": {
         "intents_per_min": 6
       },
-      "description": "You are the engine health agent. Protect the main engine. If engine_temp is above 95 and cmd_speed is above 10.5, reduce speed to 10 kn. Otherwise do nothing."
-    },
-    {
-      "id": "wx-01",
-      "cop": "nav",
-      "name": "Weather Routing",
-      "role": "weather",
-      "vendor": "Local LLM",
-      "autonomy_level": 2,
-      "priority": 60,
-      "read_scopes": [
-        "cop.ownship",
-        "cop.environment",
-        "cop.route"
-      ],
-      "tools": [
-        "set_heading"
-      ],
-      "action_limits": {
-        "set_heading": {
-          "max_delta_deg": 40
-        }
-      },
-      "resource_quota": {
-        "intents_per_min": 4
-      },
-      "description": "You are the weather routing agent. Use the weather radar: if a cell with intensity 0.6 or more is within 6 nm ahead (relative_bearing between -60 and 60), or wind_kts is 30 or more with wave_height_m above 3, and cmd_heading is still within 25 degrees of the planned route heading, recommend turning away from the heavy cells (port if they are to starboard) by about 35 degrees to reduce roll and stay out of the worst rain and sea. Name the cell and wave height in your rationale. Otherwise do nothing."
-    },
-    {
-      "id": "nav-01",
-      "cop": "nav",
-      "name": "Navigation",
-      "role": "navigation",
-      "vendor": "Local LLM",
-      "autonomy_level": 3,
-      "priority": 40,
-      "read_scopes": [
-        "cop.ownship",
-        "cop.route"
-      ],
-      "tools": [
-        "set_heading",
-        "set_speed"
-      ],
-      "action_limits": {
-        "set_heading": {
-          "max_delta_deg": 30
-        },
-        "set_speed": {
-          "min_kn": 4,
-          "max_kn": 18
-        }
-      },
-      "resource_quota": {
-        "intents_per_min": 12
-      },
-      "description": "You are the navigation agent. Keep the ship on its planned route and schedule: 16 kn along the planned route heading. cross_track_nm is how far north (+) or south (-) of the track line the ship is; when it is more than 0.2 nm off, steer back (south of track: heading a little left of route; north: a little right), changing heading by no more than 25 degrees per order. If cmd_speed is not 16, order 16 kn. You cannot see other ships."
+      "description": "C# lookout. Engine above its warning temperature: the speed that brings it back under the limit, and a slower step that keeps it under the damage limit.",
+      "tier": "sub",
+      "parent": "eoow-01",
+      "behavior": "lookout"
     },
     {
       "id": "nrg-01",
-      "cop": "nav",
+      "cop": "systems",
       "name": "Energy Optimizer",
       "role": "energy",
-      "vendor": "Local LLM",
+      "vendor": "C# lookout",
       "autonomy_level": 3,
       "priority": 20,
       "read_scopes": [
@@ -261,13 +320,57 @@
       "action_limits": {
         "set_speed": {
           "min_kn": 8,
-          "max_kn": 14
+          "max_kn": 16
         }
       },
       "resource_quota": {
         "intents_per_min": 6
       },
-      "description": "You are the energy optimizer. Minimize fuel burn. If cmd_speed is above 12.5 kn, recommend 12 kn. You may never command the rudder. Otherwise do nothing."
+      "description": "C# lookout. Above 20 knots with no threat on any picture: back to the 16-knot schedule to save fuel.",
+      "tier": "sub",
+      "parent": "eoow-01",
+      "behavior": "lookout"
+    },
+    {
+      "id": "dca-01",
+      "cop": "dc",
+      "name": "Damage Control",
+      "role": "damage_control",
+      "vendor": "C# lookout",
+      "autonomy_level": 2,
+      "priority": 88,
+      "read_scopes": [
+        "ship.systems"
+      ],
+      "tools": [
+        "dispatch_team",
+        "set_gq"
+      ],
+      "resource_quota": {
+        "intents_per_min": 8
+      },
+      "description": "C# lookout. Each casualty with no team: the nearest manned repair teams with their transit times (and General Quarters if it is not set). No team manned: General Quarters.",
+      "tier": "sub",
+      "parent": "dco-01",
+      "behavior": "lookout"
+    },
+    {
+      "id": "dco-01",
+      "cop": "dc",
+      "tier": "decider",
+      "name": "Damage Control Officer",
+      "role": "dc_officer",
+      "vendor": "Local LLM",
+      "autonomy_level": 2,
+      "priority": 89,
+      "read_scopes": [
+        "ship.systems"
+      ],
+      "tools": [],
+      "resource_quota": {
+        "intents_per_min": 30
+      },
+      "description": "You command the Damage Control picture. The C# Damage Control lookout reports each casualty without a team, with the repair teams that can go and how long each takes. You choose; the lookout sends the team and Bridge Warden checks it first. Fires and floods first (they spread), the nearest manned team, General Quarters when no team is manned."
     }
   ]
 }

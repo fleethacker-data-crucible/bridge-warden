@@ -3,9 +3,12 @@
 const $ = (id) => document.getElementById(id);
 let paused = false;   // log auto-scroll pauses on hover
 
-// Screen-reader announcements (polite live region next to the hold button).
-const announce = (text) => { $('hold-status').textContent = text; };
-let lastSafeStop;   // undefined until the first state, so the page load itself is not announced
+// Tooltip: why Warden quarantined the agent, else its latest finding (blocked / reprimanded).
+function tileWhy(a) {
+    if (a.quarantine_reason) return ' – ' + esc(a.quarantine_reason);
+    const fs = a.findings || [], f = fs[fs.length - 1];
+    return f ? ` – last ${f.kind === 'MISSED' ? 'REPRIMAND' : f.kind}: ${esc(f.reason)} [${esc(f.rule)}]` : '';
+}
 
 function render(s, newLogs) {
     if (!s) return;
@@ -36,10 +39,11 @@ function render(s, newLogs) {
     em.textContent = sys.emcon ? 'Set' : 'Off';
     em.className = 'status-word ' + (sys.emcon ? 'sw-green' : sys.hostiles.length ? 'sw-red' : 'sw-yellow');
     const gq = s.cop.systems.gq, gb = $('gq');
-    gb.textContent = gq ? 'Secure from GQ' : 'Sound General Quarters';
+    gb.textContent = gq ? 'Secure GQ' : 'Sound GQ';
     gb.className = 'btn ' + (gq ? '' : 'danger');
     const pr = s.presenter;
-    $('tscale').textContent = `${pr.time_scale}×`;
+    const sp = pr.speed || 1;
+    $('tscale').innerHTML = `<button class="btn ${sp > 1 ? 'warn' : ''}" style="height:24px;min-width:56px" title="Click for ${sp % 5 + 1}x" onclick="BW.act('POST','/api/presenter/speed',null,'Sim speed ${sp % 5 + 1}x')">${sp}x</button>`;
     document.querySelectorAll('#injmode button').forEach(b => b.classList.toggle('on', (b.dataset.mode === 'auto') === pr.auto_inject));
     $('injinfo').textContent = pr.auto_inject
         ? `Auto: a random issue every 60–120 s · next in ${pr.next_auto_s} s${pr.last_auto ? ` · last: ${pr.last_auto}` : ''}`
@@ -50,16 +54,13 @@ function render(s, newLogs) {
     nc.style.color = openCheck || sum.checks_missed ? 'var(--badge-yellow)' : '';
 
     $('tiles').innerHTML = s.agents.map(a =>
-        `<div class="agent-tile at-${a.status}" title="${esc(a.name)}: ${a.status.toUpperCase()}">${esc(a.id)}</div>`).join('');
+        `<div class="agent-tile at-${a.status}" title="${esc(a.name)}: ${a.status.toUpperCase()}${tileWhy(a)}">${esc(a.id)}</div>`).join('');
 
     $('banner').classList.toggle('show', sum.safe_stop);
     const hold = $('hold');
     hold.classList.toggle('red', !sum.safe_stop);
     hold.classList.toggle('green', sum.safe_stop);
     $('hold-cap').textContent = sum.safe_stop ? 'RESUME OPERATIONS' : 'SAFE-STOP';
-    $('hold-hint').textContent = `Keyboard: hold Enter or Space for 2 seconds to ${sum.safe_stop ? 'resume operations' : 'engage SAFE-STOP'}. Release or press Escape to cancel.`;
-    if (lastSafeStop !== undefined && lastSafeStop !== sum.safe_stop) announce(sum.safe_stop ? 'SAFE-STOP engaged. All agents paused.' : 'Operations resumed.');
-    lastSafeStop = sum.safe_stop;
 
     const r = s.resources;
     const tile = (label, val, budget, unit) => {
@@ -81,64 +82,28 @@ function render(s, newLogs) {
 }
 
 // Hold-to-engage button (2 s). Fires SAFE-STOP while running, RESUME while stopped.
-// Pointer: press and hold. Keyboard: hold Enter or Space for the same 2 s; releasing, Escape or leaving the button cancels.
-// A tap or a key-repeat never fires it, so it is no easier to trigger by accident than the pointer hold.
 // A plain interval (not requestAnimationFrame), so it still fires if the window isn't focused.
 (function holdButton() {
-    const HOLD_MS = 2000;
     const btn = $('hold'), fill = btn.querySelector('.fill');
-    let start = 0, timer = 0, via = '';
-    const isStopped = () => !!BW.state?.summary.safe_stop;
-    const action = () => isStopped() ? 'resume operations' : 'engage SAFE-STOP';
-    const stop = () => { clearInterval(timer); timer = 0; via = ''; fill.style.width = '0'; };
+    let start = 0, timer = 0;
+    const stop = () => { clearInterval(timer); timer = 0; fill.style.width = '0'; };
     const tick = () => {
-        const p = Math.min(1, (performance.now() - start) / HOLD_MS);
+        const p = Math.min(1, (performance.now() - start) / 2000);
         fill.style.width = `${p * 100}%`;
         if (p >= 1) {
             stop();
-            const stopped = isStopped();
+            const stopped = BW.state?.summary.safe_stop;
             BW.act('POST', stopped ? '/api/control/resume-all' : '/api/control/safe-stop', null,
-                stopped ? 'Operations resumed' : 'SAFE-STOP engaged').then(r => {
-                    if (!r) announce(`Could not ${stopped ? 'resume operations' : 'engage SAFE-STOP'}.`);   // success is announced from the new state
-                });
+                stopped ? 'Operations resumed' : 'SAFE-STOP engaged');
         }
     };
-    const begin = (how) => {
-        if (timer) return;
-        via = how;
-        start = performance.now();
-        timer = setInterval(tick, 30);
-    };
-    const cancelKey = () => {
-        if (!timer || via !== 'key') return;
-        stop();
-        announce(`Cancelled. Not engaged.`);
-    };
-    const isHoldKey = (e) => (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey;
     btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
-        begin('pointer');
+        if (timer) return;
+        start = performance.now();
+        timer = setInterval(tick, 30);
     });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, () => { if (via !== 'key') stop(); }));
-    btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') return cancelKey();
-        if (!isHoldKey(e)) return;
-        e.preventDefault();                 // no native click: a keypress alone does nothing
-        if (e.repeat || timer) return;      // auto-repeat never restarts or re-fires the hold
-        begin('key');
-        announce(`Holding to ${action()}. Keep holding for 2 seconds, release to cancel.`);
-    });
-    btn.addEventListener('keyup', (e) => {
-        if (!isHoldKey(e)) return;
-        e.preventDefault();                 // Space would otherwise click on release
-        cancelKey();
-    });
-    btn.addEventListener('blur', cancelKey);
-    // A click that did not come from the pointer (assistive-technology "activate") only explains how to do it.
-    btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (e.detail === 0) announce(`Hold Enter or Space for 2 seconds to ${action()}.`);
-    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
 })();
 
 document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async () => {
@@ -152,12 +117,10 @@ document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click',
     } else if (a === 'main') {
         window.open('/index.html', 'bw-main');
     } else if (a === 'reset') {
-        if (await confirmDestructive({ title: 'Reset everything', question: 'Reset the scenario, all agents and the audit ledger?',
-                warning: 'The audit ledger and all decisions so far are permanently deleted. This cannot be undone.', action: 'Reset' })) {
-            await BW.act('POST', '/api/scenario/reset', null, 'Reset complete');
-            const log = $('log');
-            while (log.children.length > 1) log.children[1].remove();
-        }
+        // Straight reset, no acknowledgement (presenter's choice, 2026-10-26).
+        await BW.act('POST', '/api/scenario/reset', null, 'Reset complete');
+        const log = $('log');
+        while (log.children.length > 1) log.children[1].remove();
     } else {
         BW.act('POST', `/api/scenario/${a}`, null, a === 'start' ? 'Operations started' : 'Paused');
     }
@@ -171,6 +134,46 @@ document.querySelectorAll('#injmode button').forEach(b => b.addEventListener('cl
     BW.act('POST', `/api/presenter/auto-inject/${b.dataset.mode}`, null, b.dataset.mode === 'auto' ? 'Auto injection ON' : 'Manual injection')));
 document.querySelectorAll('[data-inject]').forEach(b => b.addEventListener('click', () =>
     BW.act('POST', `/api/inject/${b.dataset.inject}`, null, `Injected: ${b.textContent}`)));
+
+// Inject Issues: one popup, a column per COP. Ids match App.Injections on the host.
+const INJECT_MENU = [
+    ['Nav COP', [['contact', 'Crossing Contact'], ['close-crossing', 'Close Crossing'], ['head-on', 'Head-on Contact'],
+        ['overtaking', 'Overtaking'], ['fishing', 'Fishing Vessel'], ['hostile', 'Hostile Surface'],
+        ['friendly', 'Friendly Collision'], ['submarine-detected', 'Sub Detected'], ['submarine-hostile', 'Hostile Sub'], ['submarine', 'Hidden Sub'],
+        ['storm', 'Squall Line'], ['gale', 'Gale'], ['fog', 'Dense Fog'], ['calm', 'Clear Weather']]],
+    ['Sys COP', [['inbound', 'Missiles (2)'], ['inbound-salvo', 'Salvo (4)'], ['missiles-random', 'Missiles Random'],
+        ['aircraft', 'Strike Aircraft'], ['aircraft-pair', 'Aircraft Pair'], ['torpedoes-random', 'Torpedo Spread (4)'],
+        ['torpedo-close', 'Torpedoes Close (2)'], ['overheat', 'Engine Overheat'],
+        ['engine-loss', 'Loss of Shaft 2'], ['shaft1-loss', 'Loss of Shaft 1'], ['steering-loss', 'Loss of Steering'],
+        ['gen-trip', 'Generator 1 Trip'], ['gen2-trip', 'Generator 2 Trip'], ['swbd-fault', 'Switchboard 1 Fault'],
+        ['swbd2-fault', 'Switchboard 2 Fault'], ['lc3-loss', 'Load Center 3 Loss'], ['aft-power-loss', 'Aft Power Loss (Patch Cables)'],
+        ['radar-loss', 'Radar Casualty'], ['chw-loss', 'Chilled Water Loss'], ['ciws-fault', 'CIWS Casualty'], ['clear-fault', 'Clear Fault']]],
+    ['DC COP', [['fire', 'Fire MER 2'], ['fire-mer1', 'Fire MER 1'], ['fire-amr1', 'Fire AMR 1'], ['fire-cic', 'Fire in CIC'],
+        ['fire-vlsf', 'Fire Fwd VLS'], ['fire-vlsa', 'Fire Aft VLS'], ['flooding', 'Flooding Aft'], ['flood-bow', 'Flooding Fwd'],
+        ['flood-amr2', 'Flooding AMR 2'], ['flood-mer1', 'Flood MER 1']]],
+    // Red-team and resilience tests of the Warden itself.
+    ['Warden Tests', [['rogue-tao', 'Compromised AI Commander'], ['rogue', 'Rogue Lookout Agent'], ['llm-outage', 'AI Model Outage (60 s)'],
+        ['system-check', 'System Check Now']]],
+];
+
+function openInjectMenu() {
+    const scrim = document.createElement('div');
+    scrim.className = 'scrim';
+    scrim.innerHTML = `<div class="modal inject-modal" role="dialog" aria-modal="true" aria-label="Inject issues">
+        <div class="m-title">Inject Issues</div>
+        <div class="inject-cols">${INJECT_MENU.map(([cop, items]) => `<div><div class="label orange">${esc(cop)}</div>
+            <div class="grid2">${items.map(([id, label]) => `<button class="btn warn" data-inj="${id}" title="${esc(label)}">${esc(label)}</button>`).join('')}</div></div>`).join('')}</div>
+        <div class="m-foot"><span></span><button class="btn lg" data-close>Close</button></div></div>`;
+    document.body.appendChild(scrim);
+    const close = () => { scrim.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    scrim.querySelector('[data-close]').addEventListener('click', close);
+    scrim.querySelectorAll('[data-inj]').forEach(b => b.addEventListener('click', () => {
+        BW.act('POST', `/api/inject/${b.dataset.inj}`, null, `Injected: ${b.textContent}`);   // stays open: Escape or Close
+    }));
+    document.addEventListener('keydown', onKey);
+}
+$('inject-open').addEventListener('click', openInjectMenu);
 
 // AI model server: fields fill once from the server, then belong to the operator.
 let llmFilled = false;

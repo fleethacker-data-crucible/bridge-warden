@@ -153,7 +153,9 @@ const NotifyWatch = (() => {
         BW.act('POST', `/api/escalations/${id}/${approve ? 'approve' : 'reject'}`, null, approve ? 'Approved' : 'Rejected');
     }
 
-    function update(s, review) {
+    // decisions: false where the page already shows Approve / Deny cards (the main app's right column); alerts,
+    // SAFE-STOP and everything else still notify.
+    function update(s, review, decisions = true) {
         if (!s) return;
         // Alerts (critical → error, warn → warn). Skip the backlog on first load.
         if (seenAlerts === null) seenAlerts = new Set(s.alerts.map(a => a.id));
@@ -165,7 +167,8 @@ const NotifyWatch = (() => {
         // Escalations: new open → decision banner; timed out → warn.
         for (const e of s.escalations) {
             const prev = seenEsc.get(e.id);
-            if (prev === undefined && e.status === 'open') {
+            // System checks (confirm autonomous ops) never pop up: they sit in every COP's decisions column.
+            if (decisions && prev === undefined && e.status === 'open' && e.kind !== 'system_check') {
                 const p = e.proposal || {};
                 const check = e.kind === 'system_check';
                 Notify.show({
@@ -188,7 +191,8 @@ const NotifyWatch = (() => {
             Notify.show({ variant: 'error', title: 'SAFE-STOP engaged', body: 'All agents paused · holding course at safe speed' });
         }
         wasStopped = stopped;
-        const open = s.escalations.filter(e => e.status === 'open');
+        if (!decisions) return;
+        const open = s.escalations.filter(e => e.status === 'open' && e.kind !== 'system_check');
         const here = open.filter(e => Notify.inScope(e.domain)).length;
         Notify.pending(here, review, open.length - here);
     }

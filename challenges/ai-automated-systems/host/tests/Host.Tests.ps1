@@ -86,7 +86,7 @@ Describe 'API routes' {
     }
     It 'serves /api/state as the live snapshot JSON' {
         $s = (Get-Status '/api/state').Body | ConvertFrom-Json
-        $s.summary.agents_total | Should -Be 10
+        $s.summary.agents_total | Should -Be 13
     }
     It 'starts the scenario on POST /api/scenario/start' {
         $r = Get-Status '/api/scenario/start' @{} 'POST'

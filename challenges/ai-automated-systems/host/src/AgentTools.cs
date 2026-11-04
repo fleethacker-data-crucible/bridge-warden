@@ -1,8 +1,8 @@
-// Calculator tools the LLM agents may call while deciding (port of warden\agent_tools.py). C# 5, framework assemblies only.
+// Calculators over facts already on the COP (CPA, weather clearance, evasion, power lineups). C# 5, framework assemblies only.
 //
-// These are pure math over facts already on the COP. They never recommend, rank or choose anything: the model decides
-// WHICH calculation to run, reads the numbers, and makes the decision. Every call and result is recorded in the
-// decision's provenance.
+// Pure math: they never recommend or choose. The C# lookouts (NavCell.cs) call them to work out each option's
+// predicted result; a model agent on the free-form path (LlmAgent.cs) may call them as tools, and each call and result
+// is recorded in that decision's provenance.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -636,6 +636,34 @@ namespace BridgeWarden
         }
 
         // What would be energized, and generator load, if these breakers were closed/opened. A what-if on a copy.
+        // Breakers not in their normal (design) position: {breaker: "closed (normally open)"}.
+        public static Dictionary<string, object> OffNormal(ShipSystems sys)
+        {
+            Dictionary<string, object> d = new Dictionary<string, object>();
+            foreach (Dictionary<string, object> b in sys.breakers.Values)
+                if (!Py.Str(b["id"]).StartsWith("F-", StringComparison.Ordinal) && Py.Truthy(b["closed"]) != Py.Truthy(b["normal"]))
+                    d[Py.Str(b["id"])] = Py.Truthy(b["closed"]) ? "closed (normally open)" : "open (normally closed)";
+            return d;
+        }
+
+        // What-if for returning every breaker to normal: the lineup, what it leaves unpowered, and whether it is safe
+        // (loses nothing that is powered now, no generator over 100 %). Null when the plant is already normal.
+        public static Dictionary<string, object> NormalLineup(World world)
+        {
+            List<object> close = new List<object>(), open = new List<object>();
+            foreach (Dictionary<string, object> b in world.sys.breakers.Values)
+                if (!Py.Str(b["id"]).StartsWith("F-", StringComparison.Ordinal) && Py.Truthy(b["closed"]) != Py.Truthy(b["normal"]))
+                    (Py.Truthy(b["normal"]) ? close : open).Add(b["id"]);
+            if (close.Count + open.Count == 0) return null;
+            Dictionary<string, object> r = ToolPowerLineup(world, Py.D("close", close, "open", open));
+            HashSet<string> deadNow = new HashSet<string>(world.sys.nodes.Where(kv => !Py.Truthy(kv.Value["powered"]) && !Py.Truthy(kv.Value["failed"])).Select(kv => kv.Key));
+            List<object> lost = Py.ListOrEmpty(r["unpowered"]).Where(x => !deadNow.Contains(Py.Str(x))).ToList();
+            bool over = Py.DictOrEmpty(r["generator_load_pct"]).Values.Any(v => Py.Num(v) > 100);
+            r["would_lose_power"] = lost;
+            r["safe"] = lost.Count == 0 && !over;
+            return r;
+        }
+
         public static Dictionary<string, object> ToolPowerLineup(World world, Dictionary<string, object> args)
         {
             // copy.deepcopy(world.sys): Flow() reads only nodes and breakers, so a fresh plant with copies of those.
@@ -662,6 +690,66 @@ namespace BridgeWarden
             Dictionary<string, object> load = new Dictionary<string, object>();
             foreach (KeyValuePair<string, int> kv in sim.gen_load) load[kv.Key] = kv.Value;
             return Py.D("close", close, "open", open, "unpowered", unpowered, "generator_load_pct", load);
+        }
+
+        // Every way to put power back on one piece of equipment: the live path it has now, each single breaker that would
+        // re-energize it, and (when no single breaker does) each pair, with the generator load % and what else each
+        // option powers or drops. Options that overload a generator are listed but flagged.
+        public static Dictionary<string, object> ToolPowerRoutes(World world, Dictionary<string, object> args)
+        {
+            string target = Py.Str(Py.Get(args, "equipment", ""));
+            if (!world.sys.nodes.ContainsKey(target)) throw new PyError("unknown equipment " + target);
+            ShipSystems sim = new ShipSystems();
+            sim.nodes = CopyTable(world.sys.nodes);
+            sim.breakers = CopyTable(world.sys.breakers);
+            sim.Flow();
+            Dictionary<string, object> node = sim.nodes[target];
+            List<string> feeders = sim.breakers.Values.Where(b => Py.Str(b["a"]) == target || Py.Str(b["b"]) == target)
+                .Select(b => Py.Str(b["id"]) + " (" + (Py.Truthy(b["closed"]) ? "closed" : "open") + ", from " +
+                             (Py.Str(b["a"]) == target ? Py.Str(b["b"]) : Py.Str(b["a"])) + ")").ToList();
+            if (Py.Truthy(node["failed"]))
+                return Py.D("equipment", target, "state", "FAILED (damaged: re-routing cannot restore it)", "feeders", feeders);
+            HashSet<string> before = new HashSet<string>(sim.nodes.Where(kv => !Py.Truthy(kv.Value["powered"]) && !Py.Truthy(kv.Value["failed"])).Select(kv => kv.Key));
+            if (Py.Truthy(node["powered"]))
+                return Py.D("equipment", target, "state", "powered", "feeders", feeders, "generator_load_pct", Loads(sim));
+            // An unrigged casualty power cable is not a path yet: only real breakers are trial-closed.
+            List<string> open = sim.breakers.Values.Where(b => !Py.Truthy(b["closed"]) && !Py.Truthy(Py.Get(b, "casualty_power"))).Select(b => Py.Str(b["id"])).ToList();
+            List<object> options = new List<object>();
+            Func<string[], Dictionary<string, object>> trial = delegate(string[] close)
+            {
+                foreach (string c in close) sim.breakers[c]["closed"] = true;
+                sim.Flow();
+                Dictionary<string, object> r = null;
+                if (Py.Truthy(sim.nodes[target]["powered"]))
+                {
+                    HashSet<string> after = new HashSet<string>(sim.nodes.Where(kv => !Py.Truthy(kv.Value["powered"]) && !Py.Truthy(kv.Value["failed"])).Select(kv => kv.Key));
+                    Dictionary<string, object> load = Loads(sim);
+                    bool over = sim.Overloaded().Count > 0;
+                    r = Py.D("close", Py.ToList(close.Cast<object>()), "restores", Py.ToList(before.Where(x => !after.Contains(x)).OrderBy(x => x).Cast<object>()),
+                             "still_unpowered", Py.ToList(after.OrderBy(x => x).Cast<object>()), "generator_load_pct", load, "overload", over);
+                }
+                foreach (string c in close) sim.breakers[c]["closed"] = false;
+                return r;
+            };
+            foreach (string b in open) { Dictionary<string, object> r = trial(new[] { b }); if (r != null) options.Add(r); }
+            if (options.Count == 0)
+                for (int i = 0; i < open.Count && options.Count < 12; i++)
+                    for (int j = i + 1; j < open.Count && options.Count < 12; j++)
+                    { Dictionary<string, object> r = trial(new[] { open[i], open[j] }); if (r != null) options.Add(r); }
+            sim.Flow();
+            // Best first: no overload, most equipment restored, fewest breakers.
+            options = options.OrderBy(o => Py.Truthy(((Dictionary<string, object>)o)["overload"]) ? 1 : 0)
+                .ThenByDescending(o => Py.ListOrEmpty(((Dictionary<string, object>)o)["restores"]).Count)
+                .ThenBy(o => Py.ListOrEmpty(((Dictionary<string, object>)o)["close"]).Count).Take(6).ToList();
+            return Py.D("equipment", target, "state", "NO POWER", "feeders", feeders, "options", options,
+                        "note", options.Count == 0 ? "no lineup of up to two breakers restores it; bring SSGTG-3 on line (B-G3) and try again" : "close the first option unless it overloads");
+        }
+
+        static Dictionary<string, object> Loads(ShipSystems sim)
+        {
+            Dictionary<string, object> load = new Dictionary<string, object>();
+            foreach (KeyValuePair<string, int> kv in sim.gen_load) load[kv.Key] = kv.Value;
+            return load;
         }
 
         static Dictionary<string, Dictionary<string, object>> CopyTable(Dictionary<string, Dictionary<string, object>> t)
@@ -750,6 +838,9 @@ namespace BridgeWarden
                 "{\"systems\": [\"CIWS\", \"ADS\"], \"inbound_count\": 2}", "probability inbound get through a set of defenses (pk table)");
             t["power_lineup"] = Tuple.Create<Func<World, Dictionary<string, object>, Dictionary<string, object>>, string, string>(ToolPowerLineup,
                 "{\"close\": [\"B-13\"], \"open\": []}", "what-if: equipment unpowered and generator load for a breaker lineup");
+            t["power_routes"] = Tuple.Create<Func<World, Dictionary<string, object>, Dictionary<string, object>>, string, string>(ToolPowerRoutes,
+                "{\"equipment\": \"STEER\"}",
+                "every breaker (or pair) that would put power back on one piece of equipment, best first, with generator load and side effects");
             t["weather_on_heading"] = Tuple.Create<Func<World, Dictionary<string, object>, Dictionary<string, object>>, string, string>(ToolWeatherOnHeading,
                 "{\"heading\": 55}", "clearance from each heavy rain cell along a trial heading (negative = runs into it)");
             t["torpedo_evasion"] = Tuple.Create<Func<World, Dictionary<string, object>, Dictionary<string, object>>, string, string>(ToolTorpedoEvasion,
@@ -763,15 +854,18 @@ namespace BridgeWarden
             return t;
         }
 
-        // Which calculators each role may use.
+        // Which calculators each role may use on the model path (a compromised or non-lookout agent). The C# lookouts call
+        // the same calculators directly; the deciders use none (their options already carry the results).
         public static readonly Dictionary<string, List<string>> ROLE_TOOLS = new Dictionary<string, List<string>>
         {
             { "collision", new List<string> { "cpa", "weather_on_heading", "calc" } }, { "navigation", new List<string> { "weather_on_heading", "calc" } },
             { "weather", new List<string> { "weather_on_heading", "calc" } }, { "energy", new List<string> { "calc" } },
-            { "engine", new List<string> { "calc" } }, { "ew", new List<string> { "time_to_range", "calc" } },
+            { "engine", new List<string> { "calc" } },
             { "defense", new List<string> { "evasion_headings", "hit_probability", "calc", "time_to_range" } },
             { "asw", new List<string> { "torpedo_evasion", "calc" } },
-            { "power", new List<string> { "power_lineup", "calc" } }, { "damage_control", new List<string> { "dc_transit", "calc" } },
+            { "power", new List<string> { "power_routes", "power_lineup", "calc" } },
+            { "launch", new List<string> { "time_to_range", "calc" } },
+            { "damage_control", new List<string> { "dc_transit", "calc" } },
         };
 
         public static Dictionary<string, object> RunTool(World world, string name, object args)
