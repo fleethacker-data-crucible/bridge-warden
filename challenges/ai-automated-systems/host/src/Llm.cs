@@ -637,9 +637,12 @@ namespace BridgeWarden
 
         // One turn of a conversation with the local model. No cache and no fallback text: an agent turn is either a
         // real model answer or a failure, never something we made up.
-        public static LLMResult Chat(List<object> messages, string task = "agent_turn", double timeout_s = 45.0, int max_tokens = 700)
+        // on_chunk(kind, text), when given, receives "thought" and "content" chunks as the model streams (operator chat).
+        public static LLMResult Chat(List<object> messages, string task = "agent_turn", double timeout_s = 45.0, int max_tokens = 700,
+                                     Action<string, string> on_chunk = null)
         {
             Dictionary<string, object> s = Settings();
+            if (on_chunk != null) s["on_chunk"] = on_chunk;
             s["timeout_s"] = Math.Max(N(s, "timeout_s"), timeout_s);
             s["max_tokens"] = Math.Max((int)N(s, "max_tokens"), max_tokens);
             double started = Py.Perf();

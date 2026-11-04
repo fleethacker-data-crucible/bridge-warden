@@ -3,6 +3,9 @@
 //   Env: PROFILE=demo|edge   TIME_SCALE=1   SCENARIO=ops_normal|firefight|full_demo   OPERATOR=OOD
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
 using System.IO;
 using System.Threading;
 
@@ -356,6 +359,113 @@ namespace BridgeWarden
         public Dictionary<string, object> ExplainInputs(string iid)
         {
             lock (_gate) return Explain.IntentInputs(IntentOr404(iid));
+        }
+
+        // ------------------------------------------------------------------ operator chat (Chat.cs)
+        // Agent id -> name, for validating and labelling the actions chat may propose.
+        public Dictionary<string, string> ChatAgentIds()
+        {
+            lock (_gate) return warden.agents.ToDictionary(kv => kv.Key, kv => kv.Value.identity.name);
+        }
+
+        // The live picture as compact text for the model. Taken under the gate; the model call happens outside it.
+        public string ChatContext()
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            Func<double, string> f1 = delegate(double v) { return v.ToString("0.0", inv); };
+            Func<double, string> h3 = delegate(double v) { return ((int)Math.Round((v % 360 + 360) % 360)).ToString("000", inv); };
+            StringBuilder sb = new StringBuilder();
+            lock (_gate)
+            {
+                OwnShip s = world.ship;
+                ShipSystems sys = world.sys;
+                sb.Append("Ship's time ").Append(f1(world.sim_time)).Append(" s into the exercise; phase ").Append(world.phase)
+                  .Append("; scenario ").Append(scenario.name).Append(scenario.running ? " (running)" : " (paused)").Append('\n');
+                sb.Append("Controls: SAFE-STOP ").Append(warden.safe_stop ? "ENGAGED" : "off").Append("; hold fire ").Append(warden.hold_fire ? "ON" : "off")
+                  .Append("; agents may act without asking: ").Append(warden.auto_act ? "yes" : "no (every governed action waits)")
+                  .Append("; General Quarters ").Append(sys.gq ? "ON" : "off").Append("; EMCON ").Append(sys.emcon ? "ON" : "off").Append('\n');
+                sb.Append("Own ship: heading ").Append(h3(s.heading)).Append(" (ordered ").Append(h3(s.cmd_heading)).Append("), speed ")
+                  .Append(f1(s.speed)).Append(" kn (ordered ").Append(f1(s.cmd_speed)).Append(")\n");
+
+                sb.Append("\n## TRACKS (nearest first)\n");
+                List<Contact> tracks = world.contacts.Values.Where(c => c != null && !c.hidden).OrderBy(c => c.range_nm).Take(12).ToList();
+                if (tracks.Count == 0) sb.Append("none\n");
+                foreach (Contact c in tracks)
+                    sb.Append(c.id).Append(": ").Append(c.classification.ToLowerInvariant()).Append(' ').Append(c.domain).Append(", bears ")
+                      .Append(h3(c.bearing)).Append(", ").Append(f1(c.range_nm)).Append(" nm, closest approach ").Append(f1(c.cpa_nm))
+                      .Append(" nm in ").Append(f1(c.tcpa_min)).Append(" min\n");
+
+                sb.Append("\n## AGENTS (id: name, role, status, autonomy 0-3, trust)\n");
+                foreach (LLMAgentRuntime a in warden.agents.Values.OrderByDescending(x => x.identity.tier == "decider").ThenByDescending(x => x.identity.priority))
+                {
+                    AgentIdentity id = a.identity;
+                    sb.Append(id.id).Append(": ").Append(id.name).Append(", ").Append(id.role).Append(", ").Append(id.status)
+                      .Append(", autonomy ").Append(id.autonomy_level).Append(", trust ").Append(((int)Math.Round(id.trust_score)).ToString(inv));
+                    if (id.tier == "decider") sb.Append(", DECIDER");
+                    lock (a.status)
+                    {
+                        object last = Py.Get(a.status, "last_actions");
+                        List<object> acts = Py.ListOrEmpty(last);
+                        if (acts.Count > 0) sb.Append("; last: ").Append(Py.Cut(string.Join(" | ", acts.Select(x => Py.Str(x)).ToArray()), 160));
+                        string err = Py.StrOr(Py.Get(a.status, "last_error"), "");
+                        if (err.Length > 0) sb.Append("; model problem: ").Append(Py.Cut(err, 100));
+                    }
+                    sb.Append('\n');
+                }
+
+                List<Escalation> esc = warden.escalations.Values.Where(e => e.status == "open").ToList();
+                sb.Append("\n## WAITING ON THE OPERATOR (open escalations)\n");
+                if (esc.Count == 0) sb.Append("none\n");
+                foreach (Escalation e in esc)
+                    sb.Append(e.id).Append(" from ").Append(e.agent_id).Append(": ").Append(Py.Cut(e.title ?? "", 120)).Append(" - ")
+                      .Append(Py.Cut(e.summary ?? "", 220)).Append('\n');
+
+                List<Conflict> cf = warden.conflicts.Where(c => c.status == "open" || c.status == "escalated").ToList();
+                sb.Append("\n## OPEN CONFLICTS BETWEEN AGENTS\n");
+                if (cf.Count == 0) sb.Append("none\n");
+                foreach (Conflict c in cf.Take(6))
+                    sb.Append(c.id).Append(" (").Append(c.type).Append(", ").Append(c.severity).Append(") agents ")
+                      .Append(string.Join(", ", c.agent_ids.Select(x => Py.Str(x)).ToArray())).Append(": ").Append(Py.Cut(c.summary, 200)).Append('\n');
+
+                sb.Append("\n## RECENT ORDERS (newest first: id, agent, order, status, decided by, reason)\n");
+                List<Intent> recent = warden.intents.Values.OrderByDescending(i => i.created_at).Take(15).ToList();
+                if (recent.Count == 0) sb.Append("none yet\n");
+                foreach (Intent i in recent)
+                {
+                    sb.Append(i.id).Append(", ").Append(i.agent_id).Append(", ").Append(i.action).Append(' ').Append(Py.Cut(Json.Write(i.@params), 90))
+                      .Append(", ").Append(i.status);
+                    if (!string.IsNullOrEmpty(i.decided_by)) sb.Append(", by ").Append(i.decided_by);
+                    sb.Append(", why: ").Append(Py.Cut(i.rationale, 200));
+                    if (i.reasons.Count > 0) sb.Append("; Warden: ").Append(Py.Cut(string.Join("; ", i.reasons.Select(x => Py.Str(x)).ToArray()), 200));
+                    sb.Append('\n');
+                }
+
+                sb.Append("\n## DAMAGE AND PLANT\n");
+                if (sys.casualties.Count == 0) sb.Append("No casualties.\n");
+                foreach (Dictionary<string, object> cas in sys.casualties.Values.Take(8))
+                    sb.Append(Py.Str(cas["id"])).Append(": ").Append(Py.Str(Py.Get(cas, "kind"))).Append(" in ").Append(Py.Str(Py.Get(cas, "comp")))
+                      .Append(", severity ").Append(Py.Str(Py.Get(cas, "severity"))).Append(", team ").Append(Py.StrOr(Py.Get(cas, "team"), "none")).Append('\n');
+                Dictionary<string, object> off = AgentTools.OffNormal(sys);
+                sb.Append(off.Count == 0 ? "Electrical lineup normal.\n" : "Breakers off normal: " + Py.Cut(Json.Write(off), 300) + "\n");
+            }
+            sb.Append("\n## LEDGER (last entries, oldest first)\n");
+            foreach (object row in ledger.Rows(12))
+            {
+                Dictionary<string, object> d = row as Dictionary<string, object>;
+                if (d == null) continue;
+                sb.Append(Py.Str(Py.Get(d, "type"))).Append(" by ").Append(Py.Str(Py.Get(d, "actor"))).Append(": ")
+                  .Append(Py.Cut(Json.Write(Py.Get(d, "payload")), 180)).Append('\n');
+            }
+            return sb.ToString();
+        }
+
+        // Every chat question and what the model proposed goes on the record (nothing was done yet: the operator confirms).
+        public void ChatLogged(string question, Chat.Reply reply, LLMResult r)
+        {
+            ledger.Append("CHAT", Operator, Py.D("question", Py.Cut(question, 300), "answer", Py.Cut(reply.text, 600),
+                "proposed", reply.actions.Select(a => (object)a.label).ToList(), "ignored", reply.ignored.Select(x => (object)Py.Cut(x, 80)).ToList(),
+                "model", r.model, "ok", r.ok));
+            Emit("info", "chat", "Operator chat: " + Py.Cut(question, 80) + (reply.actions.Count > 0 ? " - " + reply.actions.Count + " action(s) proposed" : ""));
         }
 
         object AgentAction(string aid, string action)

@@ -388,7 +388,11 @@ function pageDC(s) {
     const comp = Object.fromEntries(sys.compartments.map(c => [c.id, c]));
     const cas = sys.casualties.filter(c => !['out', 'repaired'].includes(c.status)).map(c => `<div class="card"><div class="top">${badge(c.kind.toUpperCase(), c.kind === 'flood' ? 'blue' : c.kind === 'fire' ? 'red' : 'yellow')}
         <span class="ttl">${esc(comp[c.comp].name)}</span><span class="meta">${Math.round(c.severity * 100)}% · ${esc(c.status)} · team ${esc(c.team || 'NONE')}</span></div></div>`).join('');
-    return copStage(`<div class="dc-main"><div class="inset-plain" style="margin-bottom:14px">${dcSvg(sys)}</div>
-      <div class="label neutral">Open casualties</div>${cas || '<div class="empty">No open casualties</div>'}</div>`, s, 'dc');
+    // Stacked, not side by side: the ship profile is long and low, so it gets the full width and the decisions sit
+    // right under it (in columns), then the open casualties.
+    return `<div class="cop-stage stacked"><div class="dc-main">
+      <div class="inset-plain" style="margin-bottom:14px">${dcSvg(sys)}</div>
+      <div class="cop-decisions dc-decisions">${decisionsBlock(s, 'dc')}</div>
+      <div class="label neutral">Open casualties</div>${cas || '<div class="empty">No open casualties</div>'}</div></div>`;
 }
 
