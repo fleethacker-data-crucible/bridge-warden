@@ -236,25 +236,31 @@ function setModelOptions(models, chosen) {
 }
 
 // Asks the server at the URL box for its models (GET <url>/models via Warden; the key never goes in a URL).
+// Only the newest request may write the box: a slow failure for an old URL (a closed port takes ~2 s to refuse)
+// must not overwrite the answer for the URL now in the box.
+let modelsSeq = 0;
 async function loadModels() {
     const info = $('llm-models-info'), btn = $('llm-refresh');
     const url = $('llm-url').value.trim();
     if (!url) return;
+    const seq = ++modelsSeq;
     btn.disabled = true;
     info.textContent = 'Loading models...';
     try {
         const r = await BW.api('POST', '/api/llm/models', { base_url: url, api_key: $('llm-key').value });
+        if (seq !== modelsSeq) return;
         setModelOptions(r.models);
         info.textContent = r.router === 'fairlead'
             ? `Fairlead at ${r.resolved}: ${r.models.length} routes and models. Model auto = its "local" route. Key from Credential Manager.`
             : r.models.length ? `${r.models.length} model${r.models.length === 1 ? '' : 's'} at this server.`
                               : 'The server lists no models (none loaded?).';
     } catch (e) {
+        if (seq !== modelsSeq) return;
         let detail = e.message;
         try { detail = JSON.parse(e.message.replace(/^\d+ /, '')).detail || detail; } catch (_) { }
         info.textContent = `Couldn't load models: ${detail}`;
     } finally {
-        btn.disabled = false;
+        if (seq === modelsSeq) btn.disabled = false;
     }
 }
 $('llm-refresh').addEventListener('click', loadModels);
@@ -268,10 +274,15 @@ $('llm-fairlead').addEventListener('click', () => {
 });
 $('llm-url').addEventListener('change', loadModels);
 // Whether a key is saved (never the key itself).
-let clearKey = false;
+// With no typed key, Bridge Warden still sends Fairlead the key Fairlead installed in Credential Manager.
+let clearKey = false, fairleadKey = false;
 function keyInfo(set) {
+    const toFairlead = $('llm-url').value.trim().toLowerCase() === 'fairlead';
     $('llm-key-info').textContent = clearKey ? 'No key will be sent (Apply to save).'
-        : set ? 'A key is saved. Type a new one to replace it, or Clear key.' : 'No key saved: none is sent (fine for a local server).';
+        : set ? 'A key is saved. Type a new one to replace it, or Clear key.'
+        : toFairlead && fairleadKey ? 'Using the key Fairlead installed in Credential Manager (Fairlead/BridgeWarden).'
+        : toFairlead ? 'No Fairlead key yet: open Fairlead, Clients, Install for an app, BridgeWarden.'
+        : 'No key saved: none is sent (fine for a local server).';
 }
 $('llm-key-clear').addEventListener('click', () => { clearKey = true; $('llm-key').value = ''; keyInfo(false); });
 $('llm-key').addEventListener('input', () => { if ($('llm-key').value) { clearKey = false; $('llm-key-info').textContent = 'New key: Apply to save it.'; } });
@@ -289,6 +300,7 @@ function warmInfo(w) {
 $('llm-model').addEventListener('change', () => $('llmform').requestSubmit());
 BW.onState((s) => {
     if (s) warmInfo(s.server.llm.warm);
+    if (s) fairleadKey = !!s.server.llm.fairlead_key;
     if (s && !clearKey && !$('llm-key').value) keyInfo(s.server.llm.key_set);
     if (llmFilled || !s) return;
     llmFilled = true;

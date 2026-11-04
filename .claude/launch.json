@@ -4,7 +4,7 @@
     {
       "name": "bridge-warden",
       "runtimeExecutable": "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
-      "runtimeArgs": ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", "D:/cdao-maximus/challenges/ai-automated-systems/host/Start-BridgeWarden.ps1", "-NoBrowser", "-Port", "8774"],
+      "runtimeArgs": ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", "challenges/ai-automated-systems/host/Start-BridgeWarden.ps1", "-NoBrowser", "-Port", "8774"],
       "port": 8774
     }
   ]

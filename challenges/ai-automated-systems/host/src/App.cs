@@ -128,6 +128,7 @@ namespace BridgeWarden
                         llmSettings["key_set"] = k.Length > 0 && k != "local";
                     }
                 }
+                llmSettings["fairlead_key"] = FairleadKeyInstalled();   // whether Fairlead/BridgeWarden exists, never the key
                 lock (_warmLock) llmSettings["warm"] = new Dictionary<string, object>(_warm);
                 Dictionary<string, object> agentsLlm = new Dictionary<string, object>(LlmAgent.SCHEDULER.stats);
                 agentsLlm["queue"] = LlmAgent.SCHEDULER.Depth();
@@ -168,6 +169,25 @@ namespace BridgeWarden
         // Loads the configured model in the background (Llm.Warm) and reports it in state.server.llm.warm:
         // {state: idle|loading|ready|failed, model, ms, error, why, at}. When it loads, agents showing a model error
         // (NO MODEL, e.g. a timeout while the server was swapping models) are cleared at once, not at their next retry.
+        // Whether Fairlead installed a key for Bridge Warden in Credential Manager, for the AI Model Server box. State is
+        // sent several times a second, so the answer is kept for 5 s; the key itself is read and dropped at once.
+        bool _fairleadKey;
+        double _fairleadKeyAt = -1;
+        readonly object _fairleadKeyLock = new object();
+        bool FairleadKeyInstalled()
+        {
+            lock (_fairleadKeyLock)
+            {
+                double now = Py.Perf();
+                if (_fairleadKeyAt < 0 || now - _fairleadKeyAt > 5.0)
+                {
+                    try { _fairleadKey = FairleadKey.Read() != null; } catch (Exception) { _fairleadKey = false; }
+                    _fairleadKeyAt = now;
+                }
+                return _fairleadKey;
+            }
+        }
+
         Dictionary<string, object> _warm = Py.D("state", "idle");
         readonly object _warmLock = new object();
         int _warmGen;
