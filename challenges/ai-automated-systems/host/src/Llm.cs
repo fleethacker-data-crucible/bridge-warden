@@ -790,6 +790,39 @@ namespace BridgeWarden
             }
         }
 
+        // Loads the configured model into memory before anyone needs it: one 1-token request with a long timeout.
+        // Local servers (phoenix-lai, LM Studio) load a model on its first request and unload the previous one, which
+        // can take longer than a decider's 12 s budget; warming on start, on Apply and on model select avoids that.
+        public static LLMResult Warm(double timeout_s = 180.0)
+        {
+            Dictionary<string, object> s = Settings();
+            s["timeout_s"] = timeout_s;
+            s["max_tokens"] = 1;
+            s["reasoning_effort"] = "";
+            double started = Py.Perf();
+            string model = "";
+            LLMResult result;
+            try
+            {
+                model = LocalModel(s);
+                Submit(delegate { return StreamChat(Py.L(Py.D("role", "user", "content", "ok")), s, double.NaN, model); }, timeout_s);
+                result = new LLMResult("warm_up", "", "local", S(s, "base_url"), model, Py.Round((Py.Perf() - started) * 1000, 1));
+            }
+            catch (FutureTimeout)
+            {
+                result = new LLMResult("warm_up", "", "failed", S(s, "base_url"), model, Py.Round((Py.Perf() - started) * 1000, 1));
+                result.ok = false;
+                result.error = "the model did not load within " + timeout_s + " s";
+            }
+            catch (Exception e)
+            {
+                result = new LLMResult("warm_up", "", "failed", S(s, "base_url"), model, Py.Round((Py.Perf() - started) * 1000, 1));
+                result.ok = false;
+                result.error = Py.Cut(e.Message, 200);
+            }
+            return result;
+        }
+
         // One turn of a conversation with the local model. No cache and no fallback text: an agent turn is either a
         // real model answer or a failure, never something we made up.
         // on_chunk(kind, text), when given, receives "thought" and "content" chunks as the model streams (operator chat).

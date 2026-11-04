@@ -271,7 +271,20 @@ function keyInfo(set) {
 }
 $('llm-key-clear').addEventListener('click', () => { clearKey = true; $('llm-key').value = ''; keyInfo(false); });
 $('llm-key').addEventListener('input', () => { if ($('llm-key').value) { clearKey = false; $('llm-key-info').textContent = 'New key: Apply to save it.'; } });
+// Model warm-up (state.server.llm.warm): loading / loaded / failed, so nobody waits on a cold model unawares.
+function warmInfo(w) {
+    const el = $('llm-warm');
+    if (!w || w.state === 'idle') { el.textContent = ''; el.className = 'llm-warm'; return; }
+    const secs = w.ms != null ? ` in ${(w.ms / 1000).toFixed(1)} s` : '';
+    el.className = `llm-warm ${w.state}`;
+    el.textContent = w.state === 'loading' ? 'Loading model into memory…'
+        : w.state === 'ready' ? `Model loaded: ${w.model}${secs}`
+        : `Model did not load: ${w.error}`;
+}
+// Picking a model applies it at once (Apply also loads it), so it is in memory before the agents ask.
+$('llm-model').addEventListener('change', () => $('llmform').requestSubmit());
 BW.onState((s) => {
+    if (s) warmInfo(s.server.llm.warm);
     if (s && !clearKey && !$('llm-key').value) keyInfo(s.server.llm.key_set);
     if (llmFilled || !s) return;
     llmFilled = true;

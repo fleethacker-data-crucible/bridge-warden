@@ -128,6 +128,7 @@ namespace BridgeWarden
                         llmSettings["key_set"] = k.Length > 0 && k != "local";
                     }
                 }
+                lock (_warmLock) llmSettings["warm"] = new Dictionary<string, object>(_warm);
                 Dictionary<string, object> agentsLlm = new Dictionary<string, object>(LlmAgent.SCHEDULER.stats);
                 agentsLlm["queue"] = LlmAgent.SCHEDULER.Depth();
                 s["server"] = Py.D("uptime_s", (int)Py.Round(Py.Now() - _started), "operator", Operator, "profile", Profile,
@@ -160,6 +161,60 @@ namespace BridgeWarden
             _tick.IsBackground = true;
             _tick.Name = "bw-tick";
             _tick.Start();
+            WarmModel("start");
+        }
+
+        // ------------------------------------------------------------------ model warm-up
+        // Loads the configured model in the background (Llm.Warm) and reports it in state.server.llm.warm:
+        // {state: idle|loading|ready|failed, model, ms, error, why, at}. When it loads, agents showing a model error
+        // (NO MODEL, e.g. a timeout while the server was swapping models) are cleared at once, not at their next retry.
+        Dictionary<string, object> _warm = Py.D("state", "idle");
+        readonly object _warmLock = new object();
+        int _warmGen;
+
+        public object WarmModel(string why)
+        {
+            int gen;
+            lock (_warmLock)
+            {
+                gen = ++_warmGen;                             // a newer request supersedes an older one still loading
+                _warm = Py.D("state", "loading", "model", "", "ms", null, "error", "", "why", why, "at", Py.Now());
+            }
+            Emit("info", "llm", "Loading the AI model (" + why + ")...");
+            Thread th = new Thread(delegate ()
+            {
+                LLMResult r = Llm.Warm();
+                lock (_warmLock)
+                {
+                    if (gen != _warmGen) return;              // superseded: its result belongs to an older setting
+                    _warm = Py.D("state", r.ok ? "ready" : "failed", "model", r.model, "ms", (long)Py.Round(r.latency_ms),
+                                 "error", r.error ?? "", "why", why, "at", Py.Now());
+                }
+                if (r.ok)
+                {
+                    int cleared = 0;
+                    lock (_gate)
+                    {
+                        foreach (LLMAgentRuntime a in warden.agents.Values)
+                            lock (a.status)
+                                if (Py.Get(a.status, "last_ok") is bool && !(bool)Py.Get(a.status, "last_ok"))
+                                {
+                                    a.status["last_ok"] = null;       // WATCHING again; its next call reports for itself
+                                    a.status["last_error"] = "";
+                                    cleared++;
+                                }
+                        Dictionary<string, object> st = LlmAgent.SCHEDULER.stats;
+                        lock (st) if (Py.Get(st, "last_ok") is bool && !(bool)Py.Get(st, "last_ok")) { st["last_ok"] = null; st["last_error"] = ""; }
+                    }
+                    Emit("ok", "llm", "AI model loaded: " + r.model + " in " + (r.latency_ms / 1000).ToString("0.0", CultureInfo.InvariantCulture) + " s" +
+                        (cleared > 0 ? " - cleared the model error on " + cleared + " agent(s)" : ""));
+                }
+                else Emit("warn", "llm", "AI model did not load: " + r.error);
+            });
+            th.IsBackground = true;
+            th.Name = "bw-warm";
+            th.Start();
+            return Py.D("state", "loading");
         }
 
         public void Stop()
@@ -262,6 +317,7 @@ namespace BridgeWarden
                     return Py.D("ok", true);
                 }
                 if (post && path == "/api/llm/endpoint") return LlmEndpoint(body);
+                if (post && path == "/api/llm/warm") return WarmModel("requested by " + Operator);
                 if (get && path == "/api/cop") return world.Cop();
                 if (get && n == 4 && p[1] == "intents" && p[3] == "explain")
                 {
@@ -504,6 +560,7 @@ namespace BridgeWarden
             Llm.SetEndpoint(url, newKey, model, effort, Py.Truthy(Py.Get(body, "include_thoughts")));
             string shown = auto ? "Fairlead (auto-detected, now " + Llm.FairleadUrl() + ")" : url;
             Emit("info", "warden", "AI model server set to " + shown + " (" + (model.Length > 0 ? model : "auto model") + ") by " + Operator);
+            WarmModel("model applied by " + Operator);       // load it now, so the deciders don't wait on a cold model
             return Py.D("ok", true, "base_url", shown, "model", model);
         }
 
