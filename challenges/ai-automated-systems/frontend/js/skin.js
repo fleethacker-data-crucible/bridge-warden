@@ -1,20 +1,30 @@
-// Bridge Warden look switch: "kit" (FleetHacker UI Kit, the org suite standard) or "classic" (the original look).
-// Loaded first in <head> so the right look paints with no flash. Saved per browser as localStorage 'bw-skin'.
-// The kit stylesheet is only loaded while the skin is on, so "classic" is byte-for-byte the old page.
+// Bridge Warden look switch: "fleet" (Fleet Unified UI, the look every Fleet app shares), "kit" (FleetHacker UI
+// Kit) or "classic" (the original look). Loaded first in <head> so the right look paints with no flash. Saved per
+// browser as localStorage 'bw-skin'. Each look's stylesheet is only loaded while it is on, so "classic" is
+// byte-for-byte the old page.
 (function () {
     'use strict';
     var KEY = 'bw-skin';
-    var skin = 'kit';                                   // hackathon default: the org look
-    try { var saved = localStorage.getItem(KEY); if (saved === 'kit' || saved === 'classic') skin = saved; } catch (e) { }
-    if (skin === 'kit') {
-        document.documentElement.setAttribute('data-skin', 'kit');
+    var ORDER = ['fleet', 'kit', 'classic'];            // the header button steps through them in this order
+    var NAMES = { fleet: 'Fleet', kit: 'Kit', classic: 'Classic' };
+    var LONG = { fleet: 'Fleet', kit: 'FleetHacker kit', classic: 'classic' };
+    var SHEETS = { fleet: 'vendor/fleet/fleet.css', kit: 'vendor/ui-kit/kit.css' };
+    var skin = 'fleet';                                 // default: the shared Fleet look
+    try { var saved = localStorage.getItem(KEY); if (ORDER.indexOf(saved) >= 0) skin = saved; } catch (e) { }
+    if (skin !== 'classic') {
+        var root = document.documentElement;
+        root.setAttribute('data-skin', skin);
+        if (skin === 'fleet') {
+            root.setAttribute('data-app', 'bridge-warden');
+            root.setAttribute('data-theme', 'dark');    // Night watch only: the COP pictures are drawn for a dark scope
+        }
         // Synchronous so it is in place before first paint; before css/styles.css so Bridge Warden's own rules win.
-        document.write('<link rel="stylesheet" href="vendor/ui-kit/kit.css">');
+        document.write('<link rel="stylesheet" href="' + SHEETS[skin] + '">');
     }
 
     function label(btn) {
-        btn.textContent = skin === 'kit' ? 'Look: Kit' : 'Look: Classic';
-        btn.setAttribute('aria-label', 'Switch look, current: ' + (skin === 'kit' ? 'FleetHacker kit' : 'classic'));
+        btn.textContent = 'Look: ' + NAMES[skin];
+        btn.setAttribute('aria-label', 'Switch look, current: ' + LONG[skin]);
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -23,12 +33,12 @@
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'skin-toggle';
-        btn.title = 'Switch between the FleetHacker kit look and the classic Bridge Warden look';
+        btn.title = 'Switch between the Fleet, FleetHacker kit and classic Bridge Warden looks';
         label(btn);
         btn.addEventListener('click', function () {
-            skin = skin === 'kit' ? 'classic' : 'kit';
+            skin = ORDER[(ORDER.indexOf(skin) + 1) % ORDER.length];
             try { localStorage.setItem(KEY, skin); } catch (e) { }
-            location.reload();                          // the kit stylesheet is loaded at parse time; reload applies it cleanly
+            location.reload();                          // stylesheets load at parse time; reload applies them cleanly
         });
         header.appendChild(btn);
     });
