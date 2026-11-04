@@ -54,6 +54,19 @@ Describe 'Rank: base + ship condition + field promotion' {
         Effective $w 'dca-01' | Should -Be 88
     }
 
+    It 'operator re-rank (drag and drop) puts an agent just above or below another, under the current condition' {
+        $S = New-BwSetup; $w = $S.Warden
+        $S.World.sys.SetGq($true)
+        [void]$w.SetBaseRank('nrg-01', 'def-01', $null, $null, 'OOD')          # logistics -15 at GQ; def-01 is 105
+        Effective $w 'nrg-01' | Should -Be 106
+        $w.agents['nrg-01'].identity.priority | Should -Be 121
+        (@($w.Roster())[0])['id'] | Should -Be 'nrg-01'
+        [void]$w.SetBaseRank('nrg-01', $null, 'nav-01', $null, 'OOD')          # nav-01 is 30 at GQ
+        Effective $w 'nrg-01' | Should -Be 29
+        [void]$w.SetBaseRank('nrg-01', $null, $null, 20, 'OOD')
+        $w.agents['nrg-01'].identity.priority | Should -Be 20
+    }
+
     It 'the promoted repair agent wins the contested main engine' {
         $S = New-BwSetup; $w = $S.Warden; $world = $S.World
         $world.sys.SetGq($true)

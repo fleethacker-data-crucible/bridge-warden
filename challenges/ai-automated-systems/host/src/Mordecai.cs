@@ -151,6 +151,37 @@ namespace BridgeWarden
             return Rank.Parts(i, policies, world);
         }
 
+        // Operator re-ranks the roster (drag and drop on the Agents page): set the agent's human-assigned base rank so its
+        // effective rank sits just above (or below) another agent's, under the current condition and promotions.
+        // In memory, like a promotion; ledgered. base wins when given; otherwise above/below name the other agent.
+        public Dictionary<string, object> SetBaseRank(string agent_id, string above, string below, int? baseRank, string op)
+        {
+            LLMAgentRuntime rt;
+            if (!agents.TryGetValue(agent_id, out rt)) throw new KeyNotFoundException("Unknown agent " + agent_id);
+            AgentIdentity i = rt.identity;
+            if (string.IsNullOrEmpty(above)) above = null;
+            if (string.IsNullOrEmpty(below)) below = null;
+            int beforeBase = i.priority, beforeEff = Rank.Effective(i, policies, world);
+            int nb;
+            if (baseRank.HasValue) nb = baseRank.Value;
+            else
+            {
+                string other = above ?? below;
+                LLMAgentRuntime ort;
+                if (other == null || !agents.TryGetValue(other, out ort)) throw new KeyNotFoundException("Unknown agent " + other);
+                if (other == agent_id) return Rank.Parts(i, policies, world);
+                int target = Rank.Effective(ort.identity, policies, world) + (above != null ? 1 : -1);
+                nb = target - (Rank.Effective(i, policies, world) - i.priority);        // undo this agent's own modifier + promotion
+            }
+            i.priority = Math.Max(0, Math.Min(OPERATOR_PRIORITY - 1, nb));
+            int afterEff = Rank.Effective(i, policies, world);
+            ledger.Append("RANK", op, Py.D("event", "base_rank", "agent", agent_id, "from", beforeBase, "to", i.priority,
+                                           "effective_from", beforeEff, "effective_to", afterEff, "above", above, "below", below));
+            emit("milestone", op, "RANK SET: " + i.name + " base " + beforeBase + " -> " + i.priority + " (effective " + beforeEff + " -> " + afterEff + ")" +
+                 (above != null ? ", now above " + agents[above].identity.name : below != null ? ", now below " + agents[below].identity.name : "") + " (by " + op + ")");
+            return Rank.Parts(i, policies, world);
+        }
+
         public Dictionary<string, object> Demote(string agent_id, string op)
         {
             LLMAgentRuntime rt;

@@ -413,3 +413,10 @@ button { font-family: var(--font-ui); }
 .rank-eff { font: 700 16px var(--font-mono); color: var(--text); margin-right: 6px; }
 .rank-parts { font: 12px var(--font-mono); color: var(--text-muted); white-space: nowrap; }
 .rank-parts .promo { color: var(--badge-yellow); }
+
+/* Agents roster re-rank by drag and drop (js/app.js rankRelative). */
+.agent-row { cursor: grab; }
+.agent-row.dragging { opacity: .45; }
+.agent-row.drop-above { box-shadow: inset 0 3px 0 var(--blue); }
+.agent-row.drop-below { box-shadow: inset 0 -3px 0 var(--blue); }
+.agent-row .grip { color: var(--text-muted); margin-right: 6px; font-size: 13px; }

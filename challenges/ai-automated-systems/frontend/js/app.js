@@ -97,7 +97,7 @@ function setHtml(el, html) {
 }
 
 function render(s) {
-    if (!s || pointerDown) return;
+    if (!s || pointerDown || ui.dragging) return;   // never rebuild the page under a drag (Agents roster re-rank)
     renderShell(s);
     const pages = { overview: pageOverview, systems: pageSystems, dc: pageDC, agents: pageAgents, intents: pageIntents,
         conflicts: pageConflicts, escalations: pageEscalations, ledger: pageLedger };
@@ -286,8 +286,9 @@ function rankCell(r) {
 function pageAgents(s) {
     // The roster in rank order: who outranks whom right now. Re-sorts live on a condition flip or a promotion.
     const agents = s.agents.slice().sort((a, b) => (b.rank ? b.rank.effective : 0) - (a.rank ? a.rank.effective : 0) || a.id.localeCompare(b.id));
-    const rows = agents.map((a, n) => `<div class="trow ${ui.agent === a.id ? 'selected' : ''}" style="grid-template-columns:${AGENT_COLS}" onclick="selectAgent('${a.id}')">
-        <div class="right mono muted">${n + 1}</div>
+    const rows = agents.map((a, n) => `<div class="trow agent-row ${ui.agent === a.id ? 'selected' : ''}" style="grid-template-columns:${AGENT_COLS}"
+        draggable="true" data-agent="${esc(a.id)}" title="Drag onto another agent to rank it above (top half) or below (bottom half)" onclick="selectAgent('${a.id}')">
+        <div class="right mono muted"><span class="grip" aria-hidden="true">⠿</span>${n + 1}</div>
         <div><div class="primary">${esc(a.name)}${a.protocol ? ' ' + badge('PROTOCOL', 'purple') : ''}${a.rank && a.rank.promotion ? ' ' + badge('PROMOTED', 'yellow') : ''}</div>
           <div class="id">${esc(a.id)} · ${esc(a.agent_class || a.role)} · ${esc(a.vendor)}</div></div>
         <div>${badge(a.status)}</div><div>${autonomyBadge(a.autonomy_level)}</div>
@@ -297,11 +298,57 @@ function pageAgents(s) {
     const cond = s.condition || 'cruising';
     return `<div class="toolbar"><span class="page-title">Agents</span><span class="muted">Every AI system aboard in rank order: what it may access, what it may do, and who outranks whom.</span></div>
       <div class="condition-bar ${cond}"><b>CONDITION: ${CONDITION_LABEL[cond] || esc(cond)}</b>
-        <span>Rank = base (human-assigned) + condition modifier for the agent's class + field promotion. Arbitration and leases use it live.</span></div>
+        <span>Rank = base (human-assigned) + condition modifier for the agent's class + field promotion. Arbitration and leases use it live.
+          Drag an agent onto another to rank it above or below (or use Move Up / Move Down in its panel).</span></div>
       <div class="table"><div class="thead" style="grid-template-columns:${AGENT_COLS}"><span class="right">#</span><span>Agent</span><span>Status</span>
       <span>Autonomy</span><span class="right">Rank</span><span class="right">Trust</span><span class="right">Violations</span></div>${rows}</div>`;
 }
 function selectAgent(id) { ui.agent = ui.agent === id ? null : id; ui.intent = null; render(BW.state); }
+
+// ---- Roster re-rank: drag an agent row onto another (top half = above it, bottom half = below it).
+// Sets the dragged agent's human-assigned base rank (POST /api/agents/<id>/rank); the page doesn't re-render mid-drag.
+function rankRelative(id, place, other) {
+    if (!id || !other || id === other) return;
+    BW.act('POST', `/api/agents/${id}/rank`, { [place]: other }, `${id} ranked ${place} ${other}`);
+}
+function dropPlace(row, e) { const r = row.getBoundingClientRect(); return e.clientY < r.top + r.height / 2 ? 'above' : 'below'; }
+function clearDropMarks() { document.querySelectorAll('.agent-row.drop-above, .agent-row.drop-below, .agent-row.dragging').forEach(r => r.classList.remove('drop-above', 'drop-below', 'dragging')); }
+document.addEventListener('dragstart', (e) => {
+    const row = e.target.closest && e.target.closest('.agent-row');
+    if (!row) return;
+    ui.dragging = row.dataset.agent;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', row.dataset.agent);
+});
+document.addEventListener('dragover', (e) => {
+    const row = ui.dragging && e.target.closest && e.target.closest('.agent-row');
+    if (!row || row.dataset.agent === ui.dragging) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const place = dropPlace(row, e);
+    if (!row.classList.contains('drop-' + place)) {
+        document.querySelectorAll('.agent-row.drop-above, .agent-row.drop-below').forEach(r => r.classList.remove('drop-above', 'drop-below'));
+        row.classList.add('drop-' + place);
+    }
+});
+document.addEventListener('drop', (e) => {
+    const row = ui.dragging && e.target.closest && e.target.closest('.agent-row');
+    if (!row) return;
+    e.preventDefault();
+    rankRelative(ui.dragging, dropPlace(row, e), row.dataset.agent);
+});
+document.addEventListener('dragend', () => { ui.dragging = null; clearDropMarks(); render(BW.state); });
+
+// Keyboard equivalent: move one place up or down the current roster.
+function rankStep(id, dir) {
+    const s = BW.state;
+    if (!s) return;
+    const order = s.agents.slice().sort((a, b) => (b.rank ? b.rank.effective : 0) - (a.rank ? a.rank.effective : 0) || a.id.localeCompare(b.id)).map(a => a.id);
+    const i = order.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    rankRelative(id, dir < 0 ? 'above' : 'below', order[j]);
+}
 
 function drawerAgent(s, a) {
     const mine = s.intents.filter(i => i.agent_id === a.id);
@@ -343,6 +390,8 @@ function drawerAgent(s, a) {
         <div class="tile"><div class="l">Violations</div><div class="v">${a.violations}</div><div class="s">last 60 s</div></div></div>
       <div class="divider"></div>
       <div class="btn-row" style="margin-bottom:8px">
+        <button type="button" class="btn" onclick="rankStep('${a.id}', -1)" title="Rank this agent one place higher (sets its base rank)">Move Up</button>
+        <button type="button" class="btn" onclick="rankStep('${a.id}', 1)" title="Rank this agent one place lower (sets its base rank)">Move Down</button>
         ${a.rank && a.rank.promotion
             ? `<button type="button" class="btn" onclick="BW.act('POST','/api/agents/${a.id}/demote',{},'${a.id} promotion revoked')">Revoke Field Promotion</button>`
             : `<button type="button" class="btn warn" onclick="BW.act('POST','/api/agents/${a.id}/promote',{},'${a.id} promoted')" title="Field promotion: +rank for a few minutes (policies.json rank.promotion_points / promotion_minutes)">Field Promote</button>`}

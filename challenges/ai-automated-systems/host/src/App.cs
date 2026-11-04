@@ -544,6 +544,16 @@ namespace BridgeWarden
             else if (action == "promote")
                 return warden.Promote(aid, Py.Int(Py.Get(body, "points"), 0), Py.Get(body, "minutes") == null ? -1 : Py.Num(Py.Get(body, "minutes")), Operator);
             else if (action == "demote") return warden.Demote(aid, Operator);
+            // Operator re-ranks (Agents page drag and drop): {above: id} | {below: id} | {base: n}.
+            else if (action == "rank")
+            {
+                object b = Py.Get(body, "base");
+                string above = Py.Get(body, "above") as string, below = Py.Get(body, "below") as string;
+                if (b == null && above == null && below == null) throw new HttpError(422, "Give above, below or base");
+                if (above != null) AgentOr404(above);
+                if (below != null) AgentOr404(below);
+                return warden.SetBaseRank(aid, above, below, b == null ? (int?)null : Py.Int(b), Operator);
+            }
             else throw new HttpError(400, "Unknown action " + action);
             return Py.D("ok", true);
         }
