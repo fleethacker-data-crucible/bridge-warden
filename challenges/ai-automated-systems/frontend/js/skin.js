@@ -1,3 +1,4 @@
+// FLEET UI REQUIREMENTS MUST BE APPLIED. Default look is Fleet. Do not change without Anthony's yes. See AGENTS.md.
 // Bridge Warden look switch: "fleet" (Fleet Unified UI, the look every Fleet app shares), "kit" (FleetHacker UI
 // Kit) or "classic" (the original look). Loaded first in <head> so the right look paints with no flash. Saved per
 // browser as localStorage 'bw-skin'. Each look's stylesheet is only loaded while it is on, so "classic" is

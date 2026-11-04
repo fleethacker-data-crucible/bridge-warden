@@ -1,3 +1,4 @@
+/* FLEET UI REQUIREMENTS MUST BE APPLIED. Default look is Fleet. Do not change without Anthony's yes. See AGENTS.md. */
 /* Bridge Warden: Fleet skin (Fleet Unified UI v0.2, vendor/fleet/fleet.css, the look every Fleet app shares).
    Every rule is scoped under html[data-skin="fleet"], so it does nothing until js/skin.js sets the attribute, and
    js/skin.js loads vendor/fleet/fleet.css only while this skin is on. Same pattern as kit-skin.css.

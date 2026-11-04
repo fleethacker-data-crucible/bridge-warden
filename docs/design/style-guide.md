@@ -1,5 +1,7 @@
 # UI Look & Feel — Shared Product Style Guide
 
+> **Mandatory:** this guide and the Fleet UI tokens must be applied to every screen. Fleet is the default look. See "Fleet UI is mandatory" in `AGENTS.md`.
+
 > One visual language for every product we ship (Data Noodler, Bridge Warden, and the rest).
 > Source of truth: the reference screenshots in `docs/design/reference/`. Measurements below were taken from those screenshots at 100% scaling (window about 1550×970). Where a value is estimated, it is rounded to the 2/4 px grid.
 
