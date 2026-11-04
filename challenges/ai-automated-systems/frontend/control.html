@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Warden Control</title>
+<script src="js/skin.js"></script>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/kit-skin.css">
 </head>
 <body>
 <div class="banner" id="banner">SAFE-STOP ENGAGED · ALL AGENTS PAUSED</div>
@@ -47,7 +49,9 @@
     </div>
     <div class="agent-tiles" id="tiles"></div>
 
-    <button class="hold-btn red" id="hold"><span class="fill"></span><span class="cap" id="hold-cap">SAFE-STOP</span><span class="sub">Hold 2s to engage</span></button>
+    <button type="button" class="hold-btn red" id="hold" aria-describedby="hold-hint"><span class="fill"></span><span class="cap" id="hold-cap">SAFE-STOP</span><span class="sub">Hold 2s to engage</span></button>
+    <span class="sr-only" id="hold-hint">Keyboard: hold Enter or Space for 2 seconds to engage SAFE-STOP. Release or press Escape to cancel.</span>
+    <div class="sr-only" id="hold-status" role="status" aria-live="polite"></div>
 
     <div class="label blue">Governance Actions</div>
     <div class="grid2">

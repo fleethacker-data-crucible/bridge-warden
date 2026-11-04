@@ -9,6 +9,9 @@ function tileWhy(a) {
     const fs = a.findings || [], f = fs[fs.length - 1];
     return f ? ` – last ${f.kind === 'MISSED' ? 'REPRIMAND' : f.kind}: ${esc(f.reason)} [${esc(f.rule)}]` : '';
 }
+// Screen-reader announcements (polite live region next to the hold button).
+const announce = (text) => { $('hold-status').textContent = text; };
+let lastSafeStop;   // undefined until the first state, so the page load itself is not announced
 
 function render(s, newLogs) {
     if (!s) return;
@@ -61,6 +64,9 @@ function render(s, newLogs) {
     hold.classList.toggle('red', !sum.safe_stop);
     hold.classList.toggle('green', sum.safe_stop);
     $('hold-cap').textContent = sum.safe_stop ? 'RESUME OPERATIONS' : 'SAFE-STOP';
+    $('hold-hint').textContent = `Keyboard: hold Enter or Space for 2 seconds to ${sum.safe_stop ? 'resume operations' : 'engage SAFE-STOP'}. Release or press Escape to cancel.`;
+    if (lastSafeStop !== undefined && lastSafeStop !== sum.safe_stop) announce(sum.safe_stop ? 'SAFE-STOP engaged. All agents paused.' : 'Operations resumed.');
+    lastSafeStop = sum.safe_stop;
 
     const r = s.resources;
     const tile = (label, val, budget, unit) => {
@@ -82,28 +88,64 @@ function render(s, newLogs) {
 }
 
 // Hold-to-engage button (2 s). Fires SAFE-STOP while running, RESUME while stopped.
+// Pointer: press and hold. Keyboard: hold Enter or Space for the same 2 s; releasing, Escape or leaving the button cancels.
+// A tap or a key-repeat never fires it, so it is no easier to trigger by accident than the pointer hold.
 // A plain interval (not requestAnimationFrame), so it still fires if the window isn't focused.
 (function holdButton() {
+    const HOLD_MS = 2000;
     const btn = $('hold'), fill = btn.querySelector('.fill');
-    let start = 0, timer = 0;
-    const stop = () => { clearInterval(timer); timer = 0; fill.style.width = '0'; };
+    let start = 0, timer = 0, via = '';
+    const isStopped = () => !!BW.state?.summary.safe_stop;
+    const action = () => isStopped() ? 'resume operations' : 'engage SAFE-STOP';
+    const stop = () => { clearInterval(timer); timer = 0; via = ''; fill.style.width = '0'; };
     const tick = () => {
-        const p = Math.min(1, (performance.now() - start) / 2000);
+        const p = Math.min(1, (performance.now() - start) / HOLD_MS);
         fill.style.width = `${p * 100}%`;
         if (p >= 1) {
             stop();
-            const stopped = BW.state?.summary.safe_stop;
+            const stopped = isStopped();
             BW.act('POST', stopped ? '/api/control/resume-all' : '/api/control/safe-stop', null,
-                stopped ? 'Operations resumed' : 'SAFE-STOP engaged');
+                stopped ? 'Operations resumed' : 'SAFE-STOP engaged').then(r => {
+                    if (!r) announce(`Could not ${stopped ? 'resume operations' : 'engage SAFE-STOP'}.`);   // success is announced from the new state
+                });
         }
     };
-    btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+    const begin = (how) => {
         if (timer) return;
+        via = how;
         start = performance.now();
         timer = setInterval(tick, 30);
+    };
+    const cancelKey = () => {
+        if (!timer || via !== 'key') return;
+        stop();
+        announce(`Cancelled. Not engaged.`);
+    };
+    const isHoldKey = (e) => (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey;
+    btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        begin('pointer');
     });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, () => { if (via !== 'key') stop(); }));
+    btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') return cancelKey();
+        if (!isHoldKey(e)) return;
+        e.preventDefault();                 // no native click: a keypress alone does nothing
+        if (e.repeat || timer) return;      // auto-repeat never restarts or re-fires the hold
+        begin('key');
+        announce(`Holding to ${action()}. Keep holding for 2 seconds, release to cancel.`);
+    });
+    btn.addEventListener('keyup', (e) => {
+        if (!isHoldKey(e)) return;
+        e.preventDefault();                 // Space would otherwise click on release
+        cancelKey();
+    });
+    btn.addEventListener('blur', cancelKey);
+    // A click that did not come from the pointer (assistive-technology "activate") only explains how to do it.
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (e.detail === 0) announce(`Hold Enter or Space for 2 seconds to ${action()}.`);
+    });
 })();
 
 document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async () => {
