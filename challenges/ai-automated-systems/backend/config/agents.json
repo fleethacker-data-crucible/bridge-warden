@@ -344,8 +344,15 @@
       ],
       "tools": [
         "dispatch_team",
-        "set_gq"
+        "set_gq",
+        "set_speed"
       ],
+      "action_limits": {
+        "set_speed": {
+          "min_kn": 5,
+          "max_kn": 12
+        }
+      },
       "resource_quota": {
         "intents_per_min": 8
       },

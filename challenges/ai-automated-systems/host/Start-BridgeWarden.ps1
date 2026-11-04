@@ -2,7 +2,7 @@
 # Compiles host\src\*.cs with Add-Type (inbox .NET Framework compiler, C# 5, framework assemblies only) and serves
 # the operator UI on loopback. Pattern: edge-ops templates\host\Start-ToolName.ps1 and phoenix-lai src\run.ps1.
 #   powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File host\Start-BridgeWarden.ps1 [-Port n] [-NoBrowser] [-CheckOnly]
-#   -Port n      use exactly port n (no walking); default: the bridge-warden block in FleetPorts.psd1 (8774-8776)
+#   -Port n      use exactly port n (no walking); default: the bridge-warden block in FleetPorts.psd1 (8774-8775; 8776 is Fairlead)
 #   -NoBrowser   don't open the windows (tests, CI)
 #   -CheckOnly   source rules + compile, then exit 0 (CI)
 param([int]$Port = 0, [switch]$NoBrowser, [switch]$CheckOnly)

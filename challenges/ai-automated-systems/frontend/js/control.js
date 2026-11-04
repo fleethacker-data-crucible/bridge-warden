@@ -196,6 +196,9 @@ const INJECT_MENU = [
     // Red-team and resilience tests of the Warden itself.
     ['Warden Tests', [['rogue-tao', 'Compromised AI Commander'], ['rogue', 'Rogue Lookout Agent'], ['llm-outage', 'AI Model Outage (60 s)'],
         ['system-check', 'System Check Now']]],
+    // MORDECAI demos (POST /api/drill/<id>): live onboarding, condition flip, field promotion.
+    ['MORDECAI', [['drill:onboard', 'Onboard Agent Live'], ['drill:condition-flip', 'Condition Flip (GQ)'],
+        ['drill:field-promotion', 'Field Promotion Drill']]],
 ];
 
 function openInjectMenu() {
@@ -211,7 +214,8 @@ function openInjectMenu() {
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     scrim.querySelector('[data-close]').addEventListener('click', close);
     scrim.querySelectorAll('[data-inj]').forEach(b => b.addEventListener('click', () => {
-        BW.act('POST', `/api/inject/${b.dataset.inj}`, null, `Injected: ${b.textContent}`);   // stays open: Escape or Close
+        const id = b.dataset.inj;
+        BW.act('POST', id.startsWith('drill:') ? `/api/drill/${id.slice(6)}` : `/api/inject/${id}`, null, `Injected: ${b.textContent}`);   // stays open: Escape or Close
     }));
     document.addEventListener('keydown', onKey);
 }
@@ -232,31 +236,75 @@ function setModelOptions(models, chosen) {
 }
 
 // Asks the server at the URL box for its models (GET <url>/models via Warden; the key never goes in a URL).
+// Only the newest request may write the box: a slow failure for an old URL (a closed port takes ~2 s to refuse)
+// must not overwrite the answer for the URL now in the box.
+let modelsSeq = 0;
 async function loadModels() {
     const info = $('llm-models-info'), btn = $('llm-refresh');
     const url = $('llm-url').value.trim();
     if (!url) return;
+    const seq = ++modelsSeq;
     btn.disabled = true;
     info.textContent = 'Loading models...';
     try {
         const r = await BW.api('POST', '/api/llm/models', { base_url: url, api_key: $('llm-key').value });
+        if (seq !== modelsSeq) return;
         setModelOptions(r.models);
-        info.textContent = r.models.length ? `${r.models.length} model${r.models.length === 1 ? '' : 's'} at this server.`
-                                           : 'The server lists no models (none loaded?).';
+        info.textContent = r.router === 'fairlead'
+            ? `Fairlead at ${r.resolved}: ${r.models.length} routes and models. Model auto = its "local" route. Key from Credential Manager.`
+            : r.models.length ? `${r.models.length} model${r.models.length === 1 ? '' : 's'} at this server.`
+                              : 'The server lists no models (none loaded?).';
     } catch (e) {
+        if (seq !== modelsSeq) return;
         let detail = e.message;
         try { detail = JSON.parse(e.message.replace(/^\d+ /, '')).detail || detail; } catch (_) { }
         info.textContent = `Couldn't load models: ${detail}`;
     } finally {
-        btn.disabled = false;
+        if (seq === modelsSeq) btn.disabled = false;
     }
 }
 $('llm-refresh').addEventListener('click', loadModels);
+// Fairlead preset: "fairlead" = found automatically wherever Fairlead runs (its CLI file, else 8776); model auto
+// (= Fairlead's "local" route). Apply saves it.
+$('llm-fairlead').addEventListener('click', () => {
+    $('llm-url').value = 'fairlead';
+    $('llm-key').value = '';
+    setModelOptions([], '');
+    loadModels();
+});
 $('llm-url').addEventListener('change', loadModels);
+// Whether a key is saved (never the key itself).
+// With no typed key, Bridge Warden still sends Fairlead the key Fairlead installed in Credential Manager.
+let clearKey = false, fairleadKey = false;
+function keyInfo(set) {
+    const toFairlead = $('llm-url').value.trim().toLowerCase() === 'fairlead';
+    $('llm-key-info').textContent = clearKey ? 'No key will be sent (Apply to save).'
+        : set ? 'A key is saved. Type a new one to replace it, or Clear key.'
+        : toFairlead && fairleadKey ? 'Using the key Fairlead installed in Credential Manager (Fairlead/BridgeWarden).'
+        : toFairlead ? 'No Fairlead key yet: open Fairlead, Clients, Install for an app, BridgeWarden.'
+        : 'No key saved: none is sent (fine for a local server).';
+}
+$('llm-key-clear').addEventListener('click', () => { clearKey = true; $('llm-key').value = ''; keyInfo(false); });
+$('llm-key').addEventListener('input', () => { if ($('llm-key').value) { clearKey = false; $('llm-key-info').textContent = 'New key: Apply to save it.'; } });
+// Model warm-up (state.server.llm.warm): loading / loaded / failed, so nobody waits on a cold model unawares.
+function warmInfo(w) {
+    const el = $('llm-warm');
+    if (!w || w.state === 'idle') { el.textContent = ''; el.className = 'llm-warm'; return; }
+    const secs = w.ms != null ? ` in ${(w.ms / 1000).toFixed(1)} s` : '';
+    el.className = `llm-warm ${w.state}`;
+    el.textContent = w.state === 'loading' ? 'Loading model into memory…'
+        : w.state === 'ready' ? `Model loaded: ${w.model}${secs}`
+        : `Model did not load: ${w.error}`;
+}
+// Picking a model applies it at once (Apply also loads it), so it is in memory before the agents ask.
+$('llm-model').addEventListener('change', () => $('llmform').requestSubmit());
 BW.onState((s) => {
+    if (s) warmInfo(s.server.llm.warm);
+    if (s) fairleadKey = !!s.server.llm.fairlead_key;
+    if (s && !clearKey && !$('llm-key').value) keyInfo(s.server.llm.key_set);
     if (llmFilled || !s) return;
     llmFilled = true;
-    $('llm-url').value = s.server.llm.base_url;
+    $('llm-url').value = s.server.llm.endpoint === 'fairlead' ? 'fairlead' : s.server.llm.base_url;   // keep auto-detect on Apply
     setModelOptions([], s.server.llm.local_model);
     loadModels();
     $('llm-effort').value = s.server.llm.reasoning_effort;
@@ -265,9 +313,9 @@ BW.onState((s) => {
 $('llmform').addEventListener('submit', async (e) => {
     e.preventDefault();
     const r = await BW.act('POST', '/api/llm/endpoint',
-        { base_url: $('llm-url').value, api_key: $('llm-key').value, model: $('llm-model').value,
+        { base_url: $('llm-url').value, api_key: $('llm-key').value, clear_key: clearKey, model: $('llm-model').value,
           reasoning_effort: $('llm-effort').value, include_thoughts: $('llm-thoughts').checked });
-    if (r) { $('llm-key').value = ''; Notify.show({ variant: 'success', title: `AI model server set to ${r.base_url}` }); }
+    if (r) { $('llm-key').value = ''; clearKey = false; Notify.show({ variant: 'success', title: `AI model server set to ${r.base_url}` }); }
 });
 
 $('logpane').addEventListener('mouseenter', () => { paused = true; });

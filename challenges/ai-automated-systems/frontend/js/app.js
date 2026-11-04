@@ -50,7 +50,10 @@ const STAGE_SHORT = { authenticate: 'Auth', authority: 'Authz', constraints: 'Cn
 function renderShell(s) {
     const sum = s.summary;
     const ai = s.server.llm;
-    $('sub').textContent = `Multi-agent governance · ${BW.connected ? 'live' : 'DISCONNECTED'} · phase: ${s.cop.phase} · AI text: ${ai.mode}${ai.mode === 'live' ? ` (${ai.provider}/${ai.model})` : ''}`;
+    // Through Fairlead the model may be in the cloud or local, so name Fairlead and the route instead of "local".
+    const viaFairlead = ai.endpoint === 'fairlead' ? ` via Fairlead (${ai.local_model || 'local route'})` : '';
+    $('sub').textContent = `Multi-agent governance · ${BW.connected ? 'live' : 'DISCONNECTED'} · phase: ${s.cop.phase} · AI text: ${ai.mode}${ai.mode === 'live' ? ` (${ai.provider}/${ai.model})` : ''}${viaFairlead}`;
+    $('chat-model').textContent = `${viaFairlead ? 'AI model' + viaFairlead : 'local model'} · proposes, never acts`;
     $('k-sim').textContent = fmtSim(s.cop.sim_time);
     const sp = (s.presenter && s.presenter.speed) || 1;
     $('k-speed').innerHTML = `<button class="btn ${sp > 1 ? 'warn' : ''}" style="height:24px;min-width:56px" title="Sim speed: click for ${sp % 5 + 1}x" onclick="BW.act('POST','/api/presenter/speed',null,'Sim speed ${sp % 5 + 1}x')">${sp}x</button>`;
@@ -97,7 +100,7 @@ function setHtml(el, html) {
 }
 
 function render(s) {
-    if (!s || pointerDown) return;
+    if (!s || pointerDown || ui.dragging) return;   // never rebuild the page under a drag (Agents roster re-rank)
     renderShell(s);
     const pages = { overview: pageOverview, systems: pageSystems, dc: pageDC, agents: pageAgents, intents: pageIntents,
         conflicts: pageConflicts, escalations: pageEscalations, ledger: pageLedger };
@@ -273,19 +276,82 @@ function decisionCard(e) {
 function go(page) { document.querySelector(`.nav-item[data-page="${page}"]`).click(); }
 
 // ---------------------------------------------------------------- agents
-const AGENT_COLS = '1.6fr 1fr 1fr 1.2fr .6fr .7fr .6fr';
+const AGENT_COLS = '.3fr 2.2fr 1fr 1.2fr 1fr .7fr .6fr';
+// MORDECAI rank: effective = base (human-assigned) + condition modifier (by class) + field promotion. Mordecai.cs.
+const CONDITION_LABEL = { cruising: 'CRUISING', general_quarters: 'GENERAL QUARTERS' };
+const signed = (n) => n > 0 ? `+${n}` : n < 0 ? `${n}` : '±0';
+function rankCell(r) {
+    if (!r) return '–';
+    const parts = `${r.base} ${signed(r.modifier)}${r.promotion ? ` <b class="promo">+${r.promotion}</b>` : ''}`;
+    return `<span class="rank-eff">${r.effective}</span><span class="rank-parts">${parts}</span>`;
+}
+
 function pageAgents(s) {
-    const rows = s.agents.map(a => `<div class="trow ${ui.agent === a.id ? 'selected' : ''}" style="grid-template-columns:${AGENT_COLS}" onclick="selectAgent('${a.id}')">
-        <div><div class="primary">${esc(a.name)}</div><div class="id">${esc(a.id)} · ${esc(a.vendor)}</div></div>
-        <div class="sec">${esc(a.role)}</div><div>${badge(a.status)}</div><div>${autonomyBadge(a.autonomy_level)}</div>
-        <div class="right mono">${a.priority}</div>
+    // The roster in rank order: who outranks whom right now. Re-sorts live on a condition flip or a promotion.
+    const agents = s.agents.slice().sort((a, b) => (b.rank ? b.rank.effective : 0) - (a.rank ? a.rank.effective : 0) || a.id.localeCompare(b.id));
+    const rows = agents.map((a, n) => `<div class="trow agent-row ${ui.agent === a.id ? 'selected' : ''}" style="grid-template-columns:${AGENT_COLS}"
+        draggable="true" data-agent="${esc(a.id)}" title="Drag onto another agent to rank it above (top half) or below (bottom half)" onclick="selectAgent('${a.id}')">
+        <div class="right mono muted"><span class="grip" aria-hidden="true">⠿</span>${n + 1}</div>
+        <div><div class="primary">${esc(a.name)}${a.protocol ? ' ' + badge('PROTOCOL', 'purple') : ''}${a.rank && a.rank.promotion ? ' ' + badge('PROMOTED', 'yellow') : ''}</div>
+          <div class="id">${esc(a.id)} · ${esc(a.agent_class || a.role)} · ${esc(a.vendor)}</div></div>
+        <div>${badge(a.status)}</div><div>${autonomyBadge(a.autonomy_level)}</div>
+        <div class="right">${rankCell(a.rank)}</div>
         <div class="right" style="font-weight:700;color:${pctClass(a.trust_score)}">${a.trust_score.toFixed(0)}%</div>
         <div class="right mono ${a.violations ? '' : 'muted'}" style="${a.violations ? 'color:var(--badge-red)' : ''}">${a.violations}</div></div>`).join('');
-    return `<div class="toolbar"><span class="page-title">Agents</span><span class="muted">Every AI system aboard, what it may access, and what it may do.</span></div>
-      <div class="table"><div class="thead" style="grid-template-columns:${AGENT_COLS}"><span>Agent</span><span>Role</span><span>Status</span>
-      <span>Autonomy</span><span class="right">Priority</span><span class="right">Trust</span><span class="right">Violations</span></div>${rows}</div>`;
+    const cond = s.condition || 'cruising';
+    return `<div class="toolbar"><span class="page-title">Agents</span><span class="muted">Every AI system aboard in rank order: what it may access, what it may do, and who outranks whom.</span></div>
+      <div class="condition-bar ${cond}"><b>CONDITION: ${CONDITION_LABEL[cond] || esc(cond)}</b>
+        <span>Rank = base (human-assigned) + condition modifier for the agent's class + field promotion. Arbitration and leases use it live.
+          Drag an agent onto another to rank it above or below (or use Move Up / Move Down in its panel).</span></div>
+      <div class="table"><div class="thead" style="grid-template-columns:${AGENT_COLS}"><span class="right">#</span><span>Agent</span><span>Status</span>
+      <span>Autonomy</span><span class="right">Rank</span><span class="right">Trust</span><span class="right">Violations</span></div>${rows}</div>`;
 }
 function selectAgent(id) { ui.agent = ui.agent === id ? null : id; ui.intent = null; render(BW.state); }
+
+// ---- Roster re-rank: drag an agent row onto another (top half = above it, bottom half = below it).
+// Sets the dragged agent's human-assigned base rank (POST /api/agents/<id>/rank); the page doesn't re-render mid-drag.
+function rankRelative(id, place, other) {
+    if (!id || !other || id === other) return;
+    BW.act('POST', `/api/agents/${id}/rank`, { [place]: other }, `${id} ranked ${place} ${other}`);
+}
+function dropPlace(row, e) { const r = row.getBoundingClientRect(); return e.clientY < r.top + r.height / 2 ? 'above' : 'below'; }
+function clearDropMarks() { document.querySelectorAll('.agent-row.drop-above, .agent-row.drop-below, .agent-row.dragging').forEach(r => r.classList.remove('drop-above', 'drop-below', 'dragging')); }
+document.addEventListener('dragstart', (e) => {
+    const row = e.target.closest && e.target.closest('.agent-row');
+    if (!row) return;
+    ui.dragging = row.dataset.agent;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', row.dataset.agent);
+});
+document.addEventListener('dragover', (e) => {
+    const row = ui.dragging && e.target.closest && e.target.closest('.agent-row');
+    if (!row || row.dataset.agent === ui.dragging) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const place = dropPlace(row, e);
+    if (!row.classList.contains('drop-' + place)) {
+        document.querySelectorAll('.agent-row.drop-above, .agent-row.drop-below').forEach(r => r.classList.remove('drop-above', 'drop-below'));
+        row.classList.add('drop-' + place);
+    }
+});
+document.addEventListener('drop', (e) => {
+    const row = ui.dragging && e.target.closest && e.target.closest('.agent-row');
+    if (!row) return;
+    e.preventDefault();
+    rankRelative(ui.dragging, dropPlace(row, e), row.dataset.agent);
+});
+document.addEventListener('dragend', () => { ui.dragging = null; clearDropMarks(); render(BW.state); });
+
+// Keyboard equivalent: move one place up or down the current roster.
+function rankStep(id, dir) {
+    const s = BW.state;
+    if (!s) return;
+    const order = s.agents.slice().sort((a, b) => (b.rank ? b.rank.effective : 0) - (a.rank ? a.rank.effective : 0) || a.id.localeCompare(b.id)).map(a => a.id);
+    const i = order.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    rankRelative(id, dir < 0 ? 'above' : 'below', order[j]);
+}
 
 function drawerAgent(s, a) {
     const mine = s.intents.filter(i => i.agent_id === a.id);
@@ -308,7 +374,9 @@ function drawerAgent(s, a) {
       ${a.quarantine_reason ? `<div class="card" style="border-color:var(--red);margin:10px 0"><b style="color:var(--badge-red)">QUARANTINED</b> · ${esc(a.quarantine_reason)}</div>` : ''}
       <div class="kv">
         <div class="k">Role</div><div class="v">${esc(a.role)}</div><div class="k">Autonomy</div><div class="v">${autonomyBadge(a.autonomy_level)}</div>
-        <div class="k">Priority</div><div class="v">${a.priority}</div><div class="k">Trust</div><div class="v" style="color:${pctClass(a.trust_score)}">${a.trust_score.toFixed(0)}%</div>
+        <div class="k">Rank</div><div class="v">${rankCell(a.rank)}${a.rank && a.rank.promotion ? `<div class="muted" style="font-size:12px">promoted by ${esc(a.rank.promoted_by)}${a.rank.promotion_left_s != null ? `, ${Math.ceil(a.rank.promotion_left_s / 60)} min left` : ''}</div>` : ''}</div>
+        <div class="k">Class</div><div class="v">${esc(a.agent_class || '–')}${a.protocol ? ' ' + badge('PROTOCOL', 'purple') : ''}</div>
+        <div class="k">Trust</div><div class="v" style="color:${pctClass(a.trust_score)}">${a.trust_score.toFixed(0)}%</div>
         <div class="k">Read scopes</div><div class="v">${a.read_scopes.map(x => `<div class="item mono">${esc(x)}</div>`).join('')}</div>
         <div class="k">Tools</div><div class="v">${a.tools.map(x => `<div class="item mono">${esc(x)}</div>`).join('')}</div>
         <div class="k">Limits</div><div class="v">${limits}</div>
@@ -324,6 +392,13 @@ function drawerAgent(s, a) {
         <div class="tile"><div class="l">Escalated</div><div class="v">${n('escalated')}</div></div>
         <div class="tile"><div class="l">Violations</div><div class="v">${a.violations}</div><div class="s">last 60 s</div></div></div>
       <div class="divider"></div>
+      <div class="btn-row" style="margin-bottom:8px">
+        <button type="button" class="btn" onclick="rankStep('${a.id}', -1)" title="Rank this agent one place higher (sets its base rank)">Move Up</button>
+        <button type="button" class="btn" onclick="rankStep('${a.id}', 1)" title="Rank this agent one place lower (sets its base rank)">Move Down</button>
+        ${a.rank && a.rank.promotion
+            ? `<button type="button" class="btn" onclick="BW.act('POST','/api/agents/${a.id}/demote',{},'${a.id} promotion revoked')">Revoke Field Promotion</button>`
+            : `<button type="button" class="btn warn" onclick="BW.act('POST','/api/agents/${a.id}/promote',{},'${a.id} promoted')" title="Field promotion: +rank for a few minutes (policies.json rank.promotion_points / promotion_minutes)">Field Promote</button>`}
+      </div>
       <div class="btn-row">
         <button class="btn" onclick="setAutonomy('${a.id}', ${a.autonomy_level - 1})" ${a.autonomy_level === 0 ? 'disabled' : ''}>Downgrade Autonomy</button>
         <button class="btn" onclick="setAutonomy('${a.id}', ${a.autonomy_level + 1})" ${a.autonomy_level === 3 ? 'disabled' : ''}>Upgrade Autonomy</button>
@@ -429,9 +504,19 @@ function conflictCard(c) {
       <div class="body">${esc(c.summary)} ${sourceTag(c.summary_source)}</div>${c.resolution ? `<div class="res">✓ ${esc(c.resolution)}</div>` : ''}</div>`;
 }
 function pageConflicts(s) {
+    // Leases: who holds each contested actuator, at what rank, until when. A higher rank takes the lease.
+    const name = (id) => { const a = s.agents.find(x => x.id === id); return a ? a.name : id; };
+    const leases = Object.entries(s.holds || {}).map(([res, h]) => `<div class="trow" style="grid-template-columns:${LEASE_COLS}">
+        <div class="mono">${esc(res)}</div><div><div class="primary">${esc(name(h.agent_id))}</div><div class="id">${esc(h.agent_id)}</div></div>
+        <div class="mono">${esc(fmtValue(res === 'rudder' ? { heading: h.value } : { speed_kn: h.value }))}</div>
+        <div class="right mono">${esc(String(h.priority))}</div><div class="right mono">${h.until == null ? '–' : h.until.toFixed(0) + ' s'}</div></div>`).join('');
     return `<div class="toolbar"><span class="page-title">Conflicts</span><span class="muted">Where agents' recommendations, objectives or resource demands clash. Repeats are folded (×count).</span></div>
+      <div class="label neutral">Resource leases · contested actuators</div>
+      <div class="table" style="margin-bottom:18px"><div class="thead" style="grid-template-columns:${LEASE_COLS}"><span>Resource</span><span>Held by</span><span>Value</span>
+        <span class="right">Rank</span><span class="right">Lease left</span></div>${leases || '<div class="empty">No actuator is leased right now</div>'}</div>
       ${s.conflicts.map(conflictCard).join('') || '<div class="empty">No conflicts detected</div>'}`;
 }
+const LEASE_COLS = '1fr 2fr 1fr .7fr .8fr';
 
 function pageEscalations(s) {
     const cards = s.escalations.map(e => {

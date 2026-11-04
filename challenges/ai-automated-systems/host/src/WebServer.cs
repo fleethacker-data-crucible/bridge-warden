@@ -143,6 +143,10 @@ namespace BridgeWarden
             string[] seg = path.Trim('/').Split('/');
             if (req.HttpMethod == "GET" && seg.Length == 5 && seg[1] == "intents" && seg[3] == "explain" && seg[4] == "stream")
             { ExplainStream(res, seg[2]); return; }
+            if (req.HttpMethod == "POST" && path == "/api/chat/stream")
+            { ChatStream(req, res); return; }
+            if (path == "/api/protocol" || path.StartsWith("/api/protocol/", StringComparison.Ordinal))
+            { Protocol(req, res, path); return; }
 
             Dictionary<string, string> query = new Dictionary<string, string>();
             foreach (string k in req.QueryString.AllKeys) if (k != null) query[k] = req.QueryString[k];
@@ -165,6 +169,66 @@ namespace BridgeWarden
                 Log("API " + req.HttpMethod + " " + path + " error: " + ex);
                 SendJson(res, 500, Json.Write(Py.D("detail", ex.Message)));
             }
+        }
+
+        // MORDECAI protocol (App.ProtocolJson / Mordecai.cs). The raw body is kept: the signature covers its exact bytes.
+        void Protocol(HttpListenerRequest req, HttpListenerResponse res, string path)
+        {
+            string raw = "";
+            if (req.HasEntityBody)
+                using (StreamReader r = new StreamReader(req.InputStream, Encoding.UTF8)) raw = r.ReadToEnd();
+            if (raw.Length > 64 * 1024) { SendJson(res, 413, Json.Write(Py.D("detail", "Body too large"))); return; }
+            try { SendJson(res, 200, _app.ProtocolJson(req.HttpMethod, path, raw, req.Headers["X-Mordecai-Signature"])); }
+            catch (ProtocolError ex) { SendJson(res, ex.Status, Json.Write(Py.D("detail", ex.Message))); }
+            catch (KeyNotFoundException ex) { SendJson(res, 404, Json.Write(Py.D("detail", ex.Message))); }
+            catch (Exception ex)
+            {
+                Log("protocol " + path + " error: " + ex);
+                SendJson(res, 500, Json.Write(Py.D("detail", ex.Message)));
+            }
+        }
+
+        // Operator chat (Chat.cs) as Server-Sent Events: thinking - content (text chunks) - done (final text, proposed actions).
+        // The ship snapshot is taken under the gate; the model call runs outside it, so the tick loop never waits on AI.
+        void ChatStream(HttpListenerRequest req, HttpListenerResponse res)
+        {
+            Dictionary<string, object> body;
+            try
+            {
+                string text;
+                using (StreamReader r = new StreamReader(req.InputStream, Encoding.UTF8)) text = r.ReadToEnd();
+                body = Json.ParseObject(text.Trim().Length > 0 ? text : "{}");
+            }
+            catch (FormatException ex) { SendJson(res, 422, Json.Write(Py.D("detail", ex.Message))); return; }
+            List<object> history = Chat.History(Py.Get(body, "messages"));
+            if (history.Count == 0) { SendJson(res, 422, Json.Write(Py.D("detail", "messages: at least one user message"))); return; }
+            string context = _app.ChatContext();
+            res.StatusCode = 200;
+            res.ContentType = "text/event-stream; charset=utf-8";
+            res.Headers["Cache-Control"] = "no-cache";
+            res.Headers["X-Accel-Buffering"] = "no";
+            res.SendChunked = true;
+            Stream o = res.OutputStream;
+            Action<string, object> send = delegate(string ev, object data)
+            {
+                byte[] b = Encoding.UTF8.GetBytes("event: " + ev + "\ndata: " + Json.Write(data) + "\n\n");
+                lock (o) { o.Write(b, 0, b.Length); o.Flush(); }
+            };
+            try
+            {
+                send("thinking", null);
+                LLMResult r = Llm.Chat(Chat.Messages(context, history, _app.ChatAgentIds()), "operator_chat", Chat.TIMEOUT_S, Chat.MAX_TOKENS,
+                    delegate(string kind, string chunk) { if (kind == "content") { try { send("content", chunk); } catch { } } });
+                Dictionary<string, string> agents = _app.ChatAgentIds();
+                string question = Py.Str(((Dictionary<string, object>)history[history.Count - 1])["content"]);
+                Chat.Reply reply = Chat.Parse(r.ok ? r.text : "", agents);
+                if (r.ok) Chat.ApplyDirect(reply, question, agents);
+                _app.ChatLogged(question, reply, r);
+                send("done", Py.D("ok", r.ok, "error", r.error, "text", reply.text, "actions", reply.Proposals(),
+                    "model", r.model, "latency_ms", r.latency_ms));
+            }
+            catch (Exception ex) { Log("chat stream: " + ex.Message); }   // the browser closed the panel
+            finally { try { o.Close(); } catch { } }
         }
 
         // The same explanation as /explain, sent as Server-Sent Events while the model writes it.

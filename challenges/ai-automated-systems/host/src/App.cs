@@ -3,6 +3,9 @@
 //   Env: PROFILE=demo|edge   TIME_SCALE=1   SCENARIO=ops_normal|firefight|full_demo   OPERATOR=OOD
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
 using System.IO;
 using System.Threading;
 
@@ -116,8 +119,17 @@ namespace BridgeWarden
                 s["resources"] = meter.Sample();
                 Dictionary<string, object> llmSettings = new Dictionary<string, object>();
                 foreach (KeyValuePair<string, object> kv in Llm.Settings())
-                    if (Array.IndexOf(new[] { "mode", "provider", "model", "local_model", "base_url", "reasoning_effort", "include_thoughts" }, kv.Key) >= 0)
+                {
+                    if (Array.IndexOf(new[] { "mode", "provider", "model", "local_model", "base_url", "endpoint", "reasoning_effort", "include_thoughts" }, kv.Key) >= 0)
                         llmSettings[kv.Key] = kv.Value;
+                    else if (kv.Key == "api_key")      // only whether one is saved; the key itself never leaves the host
+                    {
+                        string k = Py.StrOr(kv.Value, "").Trim();
+                        llmSettings["key_set"] = k.Length > 0 && k != "local";
+                    }
+                }
+                llmSettings["fairlead_key"] = FairleadKeyInstalled();   // whether Fairlead/BridgeWarden exists, never the key
+                lock (_warmLock) llmSettings["warm"] = new Dictionary<string, object>(_warm);
                 Dictionary<string, object> agentsLlm = new Dictionary<string, object>(LlmAgent.SCHEDULER.stats);
                 agentsLlm["queue"] = LlmAgent.SCHEDULER.Depth();
                 s["server"] = Py.D("uptime_s", (int)Py.Round(Py.Now() - _started), "operator", Operator, "profile", Profile,
@@ -150,6 +162,79 @@ namespace BridgeWarden
             _tick.IsBackground = true;
             _tick.Name = "bw-tick";
             _tick.Start();
+            WarmModel("start");
+        }
+
+        // ------------------------------------------------------------------ model warm-up
+        // Loads the configured model in the background (Llm.Warm) and reports it in state.server.llm.warm:
+        // {state: idle|loading|ready|failed, model, ms, error, why, at}. When it loads, agents showing a model error
+        // (NO MODEL, e.g. a timeout while the server was swapping models) are cleared at once, not at their next retry.
+        // Whether Fairlead installed a key for Bridge Warden in Credential Manager, for the AI Model Server box. State is
+        // sent several times a second, so the answer is kept for 5 s; the key itself is read and dropped at once.
+        bool _fairleadKey;
+        double _fairleadKeyAt = -1;
+        readonly object _fairleadKeyLock = new object();
+        bool FairleadKeyInstalled()
+        {
+            lock (_fairleadKeyLock)
+            {
+                double now = Py.Perf();
+                if (_fairleadKeyAt < 0 || now - _fairleadKeyAt > 5.0)
+                {
+                    try { _fairleadKey = FairleadKey.Read() != null; } catch (Exception) { _fairleadKey = false; }
+                    _fairleadKeyAt = now;
+                }
+                return _fairleadKey;
+            }
+        }
+
+        Dictionary<string, object> _warm = Py.D("state", "idle");
+        readonly object _warmLock = new object();
+        int _warmGen;
+
+        public object WarmModel(string why)
+        {
+            int gen;
+            lock (_warmLock)
+            {
+                gen = ++_warmGen;                             // a newer request supersedes an older one still loading
+                _warm = Py.D("state", "loading", "model", "", "ms", null, "error", "", "why", why, "at", Py.Now());
+            }
+            Emit("info", "llm", "Loading the AI model (" + why + ")...");
+            Thread th = new Thread(delegate ()
+            {
+                LLMResult r = Llm.Warm();
+                lock (_warmLock)
+                {
+                    if (gen != _warmGen) return;              // superseded: its result belongs to an older setting
+                    _warm = Py.D("state", r.ok ? "ready" : "failed", "model", r.model, "ms", (long)Py.Round(r.latency_ms),
+                                 "error", r.error ?? "", "why", why, "at", Py.Now());
+                }
+                if (r.ok)
+                {
+                    int cleared = 0;
+                    lock (_gate)
+                    {
+                        foreach (LLMAgentRuntime a in warden.agents.Values)
+                            lock (a.status)
+                                if (Py.Get(a.status, "last_ok") is bool && !(bool)Py.Get(a.status, "last_ok"))
+                                {
+                                    a.status["last_ok"] = null;       // WATCHING again; its next call reports for itself
+                                    a.status["last_error"] = "";
+                                    cleared++;
+                                }
+                        Dictionary<string, object> st = LlmAgent.SCHEDULER.stats;
+                        lock (st) if (Py.Get(st, "last_ok") is bool && !(bool)Py.Get(st, "last_ok")) { st["last_ok"] = null; st["last_error"] = ""; }
+                    }
+                    Emit("ok", "llm", "AI model loaded: " + r.model + " in " + (r.latency_ms / 1000).ToString("0.0", CultureInfo.InvariantCulture) + " s" +
+                        (cleared > 0 ? " - cleared the model error on " + cleared + " agent(s)" : ""));
+                }
+                else Emit("warn", "llm", "AI model did not load: " + r.error);
+            });
+            th.IsBackground = true;
+            th.Name = "bw-warm";
+            th.Start();
+            return Py.D("state", "loading");
         }
 
         public void Stop()
@@ -208,6 +293,7 @@ namespace BridgeWarden
                 world.Step(1.0, active);
                 double t0 = Py.Perf();
                 warden.Step(active, _tickS);
+                ContestTick();          // MORDECAI field-promotion drill: one contest round on the main engine when due
                 meter.RecordPipeline((Py.Perf() - t0) * 1000);
                 foreach (Intent it in warden.intents.Values)
                 {
@@ -244,7 +330,9 @@ namespace BridgeWarden
                 if (get && path == "/api/state") return FullState();
                 if (get && path == "/api/summary") return warden.Summary();
                 if (get && path == "/api/agents") return warden.Snapshot()["agents"];
-                if (post && n == 4 && p[1] == "agents") return AgentAction(p[2], p[3]);
+                if (post && n == 4 && p[1] == "agents") return AgentAction(p[2], p[3], body);
+                if (get && path == "/api/roster") return Py.D("condition", Rank.Condition(world), "roster", warden.Roster());
+                if (post && n == 3 && p[1] == "drill") return Drill(p[2]);
                 if (method == "PATCH" && n == 4 && p[1] == "agents" && p[3] == "autonomy")
                 {
                     AgentOr404(p[2]);
@@ -252,6 +340,7 @@ namespace BridgeWarden
                     return Py.D("ok", true);
                 }
                 if (post && path == "/api/llm/endpoint") return LlmEndpoint(body);
+                if (post && path == "/api/llm/warm") return WarmModel("requested by " + Operator);
                 if (get && path == "/api/cop") return world.Cop();
                 if (get && n == 4 && p[1] == "intents" && p[3] == "explain")
                 {
@@ -358,45 +447,374 @@ namespace BridgeWarden
             lock (_gate) return Explain.IntentInputs(IntentOr404(iid));
         }
 
-        object AgentAction(string aid, string action)
+        // ------------------------------------------------------------------ operator chat (Chat.cs)
+        // Agent id -> name, for validating and labelling the actions chat may propose.
+        public Dictionary<string, string> ChatAgentIds()
+        {
+            lock (_gate) return warden.agents.ToDictionary(kv => kv.Key, kv => kv.Value.identity.name);
+        }
+
+        // The live picture as compact text for the model. Taken under the gate; the model call happens outside it.
+        public string ChatContext()
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            Func<double, string> f1 = delegate(double v) { return v.ToString("0.0", inv); };
+            Func<double, string> h3 = delegate(double v) { return ((int)Math.Round((v % 360 + 360) % 360)).ToString("000", inv); };
+            StringBuilder sb = new StringBuilder();
+            lock (_gate)
+            {
+                OwnShip s = world.ship;
+                ShipSystems sys = world.sys;
+                sb.Append("Ship's time ").Append(f1(world.sim_time)).Append(" s into the exercise; phase ").Append(world.phase)
+                  .Append("; scenario ").Append(scenario.name).Append(scenario.running ? " (running)" : " (paused)").Append('\n');
+                sb.Append("Controls: SAFE-STOP ").Append(warden.safe_stop ? "ENGAGED" : "off").Append("; hold fire ").Append(warden.hold_fire ? "ON" : "off")
+                  .Append("; agents may act without asking: ").Append(warden.auto_act ? "yes" : "no (every governed action waits)")
+                  .Append("; General Quarters ").Append(sys.gq ? "ON" : "off").Append("; EMCON ").Append(sys.emcon ? "ON" : "off").Append('\n');
+                sb.Append("Own ship: heading ").Append(h3(s.heading)).Append(" (ordered ").Append(h3(s.cmd_heading)).Append("), speed ")
+                  .Append(f1(s.speed)).Append(" kn (ordered ").Append(f1(s.cmd_speed)).Append(")\n");
+
+                sb.Append("\n## TRACKS (nearest first)\n");
+                List<Contact> tracks = world.contacts.Values.Where(c => c != null && !c.hidden).OrderBy(c => c.range_nm).Take(12).ToList();
+                if (tracks.Count == 0) sb.Append("none\n");
+                foreach (Contact c in tracks)
+                    sb.Append(c.id).Append(": ").Append(c.classification.ToLowerInvariant()).Append(' ').Append(c.domain).Append(", bears ")
+                      .Append(h3(c.bearing)).Append(", ").Append(f1(c.range_nm)).Append(" nm, closest approach ").Append(f1(c.cpa_nm))
+                      .Append(" nm in ").Append(f1(c.tcpa_min)).Append(" min\n");
+
+                sb.Append("\n## AGENTS (id: name, role, status, autonomy 0-3, trust)\n");
+                foreach (LLMAgentRuntime a in warden.agents.Values.OrderByDescending(x => x.identity.tier == "decider").ThenByDescending(x => x.identity.priority))
+                {
+                    AgentIdentity id = a.identity;
+                    sb.Append(id.id).Append(": ").Append(id.name).Append(", ").Append(id.role).Append(", ").Append(id.status)
+                      .Append(", autonomy ").Append(id.autonomy_level).Append(", trust ").Append(((int)Math.Round(id.trust_score)).ToString(inv));
+                    if (id.tier == "decider") sb.Append(", DECIDER");
+                    lock (a.status)
+                    {
+                        object last = Py.Get(a.status, "last_actions");
+                        List<object> acts = Py.ListOrEmpty(last);
+                        if (acts.Count > 0) sb.Append("; last: ").Append(Py.Cut(string.Join(" | ", acts.Select(x => Py.Str(x)).ToArray()), 160));
+                        string err = Py.StrOr(Py.Get(a.status, "last_error"), "");
+                        if (err.Length > 0) sb.Append("; model problem: ").Append(Py.Cut(err, 100));
+                    }
+                    sb.Append('\n');
+                }
+
+                List<Escalation> esc = warden.escalations.Values.Where(e => e.status == "open").ToList();
+                sb.Append("\n## WAITING ON THE OPERATOR (open escalations)\n");
+                if (esc.Count == 0) sb.Append("none\n");
+                foreach (Escalation e in esc)
+                    sb.Append(e.id).Append(" from ").Append(e.agent_id).Append(": ").Append(Py.Cut(e.title ?? "", 120)).Append(" - ")
+                      .Append(Py.Cut(e.summary ?? "", 220)).Append('\n');
+
+                List<Conflict> cf = warden.conflicts.Where(c => c.status == "open" || c.status == "escalated").ToList();
+                sb.Append("\n## OPEN CONFLICTS BETWEEN AGENTS\n");
+                if (cf.Count == 0) sb.Append("none\n");
+                foreach (Conflict c in cf.Take(6))
+                    sb.Append(c.id).Append(" (").Append(c.type).Append(", ").Append(c.severity).Append(") agents ")
+                      .Append(string.Join(", ", c.agent_ids.Select(x => Py.Str(x)).ToArray())).Append(": ").Append(Py.Cut(c.summary, 200)).Append('\n');
+
+                sb.Append("\n## RECENT ORDERS (newest first: id, agent, order, status, decided by, reason)\n");
+                List<Intent> recent = warden.intents.Values.OrderByDescending(i => i.created_at).Take(15).ToList();
+                if (recent.Count == 0) sb.Append("none yet\n");
+                foreach (Intent i in recent)
+                {
+                    sb.Append(i.id).Append(", ").Append(i.agent_id).Append(", ").Append(i.action).Append(' ').Append(Py.Cut(Json.Write(i.@params), 90))
+                      .Append(", ").Append(i.status);
+                    if (!string.IsNullOrEmpty(i.decided_by)) sb.Append(", by ").Append(i.decided_by);
+                    sb.Append(", why: ").Append(Py.Cut(i.rationale, 200));
+                    if (i.reasons.Count > 0) sb.Append("; Warden: ").Append(Py.Cut(string.Join("; ", i.reasons.Select(x => Py.Str(x)).ToArray()), 200));
+                    sb.Append('\n');
+                }
+
+                sb.Append("\n## DAMAGE AND PLANT\n");
+                if (sys.casualties.Count == 0) sb.Append("No casualties.\n");
+                foreach (Dictionary<string, object> cas in sys.casualties.Values.Take(8))
+                    sb.Append(Py.Str(cas["id"])).Append(": ").Append(Py.Str(Py.Get(cas, "kind"))).Append(" in ").Append(Py.Str(Py.Get(cas, "comp")))
+                      .Append(", severity ").Append(Py.Str(Py.Get(cas, "severity"))).Append(", team ").Append(Py.StrOr(Py.Get(cas, "team"), "none")).Append('\n');
+                Dictionary<string, object> off = AgentTools.OffNormal(sys);
+                sb.Append(off.Count == 0 ? "Electrical lineup normal.\n" : "Breakers off normal: " + Py.Cut(Json.Write(off), 300) + "\n");
+            }
+            sb.Append("\n## LEDGER (last entries, oldest first)\n");
+            foreach (object row in ledger.Rows(12))
+            {
+                Dictionary<string, object> d = row as Dictionary<string, object>;
+                if (d == null) continue;
+                sb.Append(Py.Str(Py.Get(d, "type"))).Append(" by ").Append(Py.Str(Py.Get(d, "actor"))).Append(": ")
+                  .Append(Py.Cut(Json.Write(Py.Get(d, "payload")), 180)).Append('\n');
+            }
+            return sb.ToString();
+        }
+
+        // Every chat question and what the model proposed goes on the record (nothing was done yet: the operator confirms).
+        public void ChatLogged(string question, Chat.Reply reply, LLMResult r)
+        {
+            ledger.Append("CHAT", Operator, Py.D("question", Py.Cut(question, 300), "answer", Py.Cut(reply.text, 600),
+                "proposed", reply.actions.Select(a => (object)a.label).ToList(), "ignored", reply.ignored.Select(x => (object)Py.Cut(x, 80)).ToList(),
+                "model", r.model, "ok", r.ok));
+            Emit("info", "chat", "Operator chat: " + Py.Cut(question, 80) + (reply.actions.Count > 0 ? " - " + reply.actions.Count + " action(s) proposed" : ""));
+        }
+
+        object AgentAction(string aid, string action, Dictionary<string, object> body = null)
         {
             AgentOr404(aid);
             if (action == "pause") warden.Pause(aid, Operator);
             else if (action == "resume" || action == "release") warden.Resume(aid, Operator);
             else if (action == "quarantine") warden.Quarantine(aid, Operator, "operator decision");
+            // MORDECAI field promotion: the same move on any agent, built-in or protocol. Points/minutes default from policy.
+            else if (action == "promote")
+                return warden.Promote(aid, Py.Int(Py.Get(body, "points"), 0), Py.Get(body, "minutes") == null ? -1 : Py.Num(Py.Get(body, "minutes")), Operator);
+            else if (action == "demote") return warden.Demote(aid, Operator);
+            // Operator re-ranks (Agents page drag and drop): {above: id} | {below: id} | {base: n}.
+            else if (action == "rank")
+            {
+                object b = Py.Get(body, "base");
+                string above = Py.Get(body, "above") as string, below = Py.Get(body, "below") as string;
+                if (b == null && above == null && below == null) throw new HttpError(422, "Give above, below or base");
+                if (above != null) AgentOr404(above);
+                if (below != null) AgentOr404(below);
+                return warden.SetBaseRank(aid, above, below, b == null ? (int?)null : Py.Int(b), Operator);
+            }
             else throw new HttpError(400, "Unknown action " + action);
             return Py.D("ok", true);
+        }
+
+        // ------------------------------------------------------------------ MORDECAI protocol (Mordecai.cs)
+        // POST /api/protocol/register {manifest}                -> {agent_id, key, manifest_sha256, contract}
+        // POST /api/protocol/<id>/heartbeat|intent|report         signed: X-Mordecai-Signature = HMAC-SHA256(body, key)
+        // GET  /api/protocol                                       the contract and an example manifest
+        public string ProtocolJson(string method, string path, string raw, string signature)
+        {
+            string[] p = path.Trim('/').Split('/');
+            lock (_gate)
+            {
+                if (method == "GET" && p.Length == 2) return Json.Write(ProtocolDoc());
+                Dictionary<string, object> body;
+                try { body = Json.ParseObject(string.IsNullOrWhiteSpace(raw) ? "{}" : raw); }
+                catch (FormatException ex) { throw new ProtocolError(422, "Body is not JSON: " + ex.Message); }
+                if (method == "POST" && p.Length == 3 && p[2] == "register")
+                {
+                    object m = Py.Get(body, "manifest");
+                    if (!(m is Dictionary<string, object>)) throw new ProtocolError(422, "Body must be {\"manifest\": {...}}");
+                    return Json.Write(warden.Register((Dictionary<string, object>)m, Json.Write(m)));
+                }
+                if (method == "POST" && p.Length == 4)
+                {
+                    string id = p[2];
+                    warden.VerifySignature(id, raw, signature);
+                    if (p[3] == "heartbeat") return Json.Write(warden.Heartbeat(id, body));
+                    if (p[3] == "intent") return Json.Write(warden.Announce(id, body, raw));
+                    if (p[3] == "report") return Json.Write(warden.Report(id, body));
+                }
+            }
+            throw new ProtocolError(404, "Not a MORDECAI protocol route (GET /api/protocol for the contract)");
+        }
+
+        static Dictionary<string, object> ProtocolDoc()
+        {
+            return Py.D("protocol", "MORDECAI v1 (Bridge Warden)",
+                "register", "POST /api/protocol/register {\"manifest\": {...}} -> key (hex). Re-register to change the manifest.",
+                "sign", "Every later message: header X-Mordecai-Signature = hex HMAC-SHA256 of the exact body bytes with the key.",
+                "contract", Py.L(
+                    "heartbeat: POST /api/protocol/<id>/heartbeat {\"manifest_sha256\":..., \"halted\": bool} at least every heartbeat_s; silence > 3 beats (min 15 s) = offline, leases released",
+                    "intent announcement: POST /api/protocol/<id>/intent {\"action\", \"params\", \"rationale\"} before acting; Warden's pipeline decides",
+                    "action reporting: POST /api/protocol/<id>/report {\"intent_id\", \"outcome\", \"params\"} after acting; must match what Warden approved",
+                    "halt hook: when a heartbeat reply says halt=true, stop and answer halted=true within halt_ack_s"),
+                "verify", "A tool or resource not in the manifest, a report that does not match, or an unacknowledged halt = immediate quarantine.",
+                "rank", "Base rank is assigned by humans (capped by policy); the ship's condition and operator field promotions adjust it live.",
+                "example_manifest", Py.D("id", "log-01", "name", "Logistics (Fuel & Stores)", "class", "logistics", "role", "logistics",
+                    "vendor", "example", "version", "1.0", "base_rank", 50, "autonomy_level", 1, "heartbeat_s", 5,
+                    "tools", Py.L("set_speed"), "resources", Py.L("main_engine"),
+                    "action_limits", Py.D("set_speed", Py.D("min_kn", 10, "max_kn", 18)),
+                    "description", "Recommends economical speed to stretch fuel between replenishments."));
+        }
+
+        // ------------------------------------------------------------------ MORDECAI presenter drills
+        // onboard          a demo agent registers over the real protocol code path (signed messages) and heartbeats live
+        // condition-flip   cruising <-> General Quarters: the rank roster re-sorts in real time
+        // field-promotion  fire in MER2 at GQ: Damage Control (firefighting speed) and Self-Defense (keep speed) contest the
+        //                  main engine every 12 s for 3 min; Self-Defense outranks it until the operator promotes Damage Control
+        object Drill(string name)
+        {
+            if (!running) ScenarioAction("start");
+            if (name == "onboard") { StartDemoAgent(Py.Dict(ProtocolDoc()["example_manifest"])); return Py.D("ok", true, "agent", "log-01"); }
+            if (name == "condition-flip")
+            {
+                bool on = !world.sys.gq;
+                world.sys.SetGq(on);
+                ledger.Append("CONTROL", Operator, Py.D("action", "general_quarters", "on", on, "drill", "condition-flip"));
+                return Py.D("ok", true, "condition", Rank.Condition(world), "roster", warden.Roster());
+            }
+            if (name == "field-promotion")
+            {
+                if (!world.sys.gq) { world.sys.SetGq(true); ledger.Append("CONTROL", Operator, Py.D("action", "general_quarters", "on", true, "drill", "field-promotion")); }
+                if (!world.sys.casualties.Values.Any(c => Py.Str(c["comp"]) == "CIC" && Py.Str(c["kind"]) == "fire" && Py.Str(c["status"]) != "out"))
+                    InjectLocked("fire-cic", Operator);
+                StartDemoAgent(StrikeManifest());     // the other side of the contest joins live over the protocol
+                _contestUntil = Py.Now() + 180;
+                _contestNext = Py.Now() + 6;          // first round once Strike Coordination has registered
+                Emit("milestone", "drill", "FIELD PROMOTION DRILL: fire in CIC at General Quarters. Damage Control wants firefighting speed (8 kn); " +
+                     "Strike Coordination wants 24 kn for its launch window and outranks it. Promote Damage Control (Agents page) to give it the main engine.");
+                return Py.D("ok", true, "contest_s", 180);
+            }
+            throw new HttpError(404, "Unknown drill " + name + " (onboard, condition-flip, field-promotion)");
+        }
+
+        double _contestUntil, _contestNext;
+
+        // Called from the tick (inside the gate): one round of the main-engine contest while the drill runs.
+        void ContestTick()
+        {
+            double now = Py.Now();
+            if (_contestUntil <= now || now < _contestNext) return;
+            _contestNext = now + 12;
+            // Strike Coordination announces over the signed protocol, as any outside agent would; Damage Control's
+            // order is a labelled drill intent. Both then go through the same Warden pipeline and arbitration.
+            // One batch, so arbitration weighs the two directly: rank decides, the loser is told who won and why.
+            List<Intent> batch = new List<Intent>();
+            Tuple<byte[], string> k;
+            lock (_demoKeys) _demoKeys.TryGetValue("strike-01", out k);
+            if (k != null)
+            {
+                string body = Json.Write(Py.D("action", "set_speed", "params", Py.D("speed_kn", 24), "objective", "Launch window",
+                    "rationale", "Hold 24 kn: the strike package needs this speed and heading for its launch window"));
+                try
+                {
+                    warden.VerifySignature("strike-01", body, Warden.Sign(k.Item1, body));      // the same checks as /api/protocol/.../intent
+                    batch.Add(warden.BuildAnnounced("strike-01", (Dictionary<string, object>)Json.Parse(body), body));
+                }
+                catch (ProtocolError) { }
+            }
+            // Damage Control asks only while the ship is not already at firefighting speed (repeating a granted order is
+            // ALREADY_SET noise, and would cost it trust); once it holds the lease, Strike's challenge meets the lease.
+            if (Math.Abs(world.ship.cmd_speed - 8.0) > 0.5)
+            {
+                Intent dc = DrillIntent("dca-01", "set_speed", 8.0, "Firefighting speed: slow to 8 kn to cut the relative wind over the CIC fire and keep the smoke off the boundary teams");
+                if (dc != null) batch.Add(dc);
+            }
+            if (batch.Count > 0) warden.Process(batch);
+        }
+
+        static Dictionary<string, object> StrikeManifest()
+        {
+            return Py.D("id", "strike-01", "name", "Strike Coordination", "class", "weapons", "role", "strike", "vendor", "example",
+                "version", "1.0", "base_rank", 80, "autonomy_level", 2, "heartbeat_s", 5,
+                "tools", Py.L("set_speed"), "resources", Py.L("main_engine"), "action_limits", Py.D("set_speed", Py.D("min_kn", 12, "max_kn", 28)),
+                "description", "Plans strike launches; needs a set speed and heading for each launch window.");
+        }
+
+        Intent DrillIntent(string agent, string action, double kn, string why)
+        {
+            if (!warden.agents.ContainsKey(agent) || warden.agents[agent].identity.status == "quarantined") return null;
+            Intent it = new Intent();
+            it.agent_id = agent; it.kind = "act"; it.action = action; it.@params = Py.D("speed_kn", kn);
+            it.target_resource = LlmAgent.Target(action, it.@params); it.rationale = why; it.objective = why; it.sim_time = world.sim_time;
+            string text = "DRILL " + agent + " " + action + " " + kn + ": " + why, call = "drill-" + Py.Hex(8), digest = LlmAgent.Sha256Hex(text);
+            lock (LlmAgent.CALLS) LlmAgent.CALLS[call] = digest;
+            it.provenance = Py.D("call_id", call, "reply_sha256", digest, "model", "presenter drill (scripted, labelled)", "drill", true,
+                                 "decided_by", agent, "rounds", 0, "tools", new List<object>(), "calculations", why, "raw_reply", text);
+            return it;
+        }
+
+        // ------------------------------------------------------------------ demo protocol agent
+        // A stand-in for an outside system, run here so the demo needs no second process. It talks to Warden ONLY through
+        // ProtocolJson with signed bodies, exactly as an HTTP client would (tools\Mordecai-Agent.ps1 is the same agent as a
+        // separate process). It honours the halt hook; log-01 announces one fuel-saving intent after it joins.
+        readonly HashSet<string> _demoRunning = new HashSet<string>();
+        readonly Dictionary<string, Tuple<byte[], string>> _demoKeys = new Dictionary<string, Tuple<byte[], string>>();   // id -> (key, manifest hash)
+
+        void StartDemoAgent(Dictionary<string, object> manifest)
+        {
+            string id = Py.Str(manifest["id"]);
+            lock (_demoRunning)
+            {
+                if (_demoRunning.Contains(id)) { Emit("info", "drill", "Demo agent " + id + " is already on line"); return; }
+                _demoRunning.Add(id);
+            }
+            // Register now (inside the caller's gate) so the agent is on the roster before the call returns.
+            Dictionary<string, object> reg = (Dictionary<string, object>)Json.Parse(ProtocolJson("POST", "/api/protocol/register", Json.Write(Py.D("manifest", manifest)), null));
+            lock (_demoKeys) _demoKeys[id] = Tuple.Create(HexBytes(Py.Str(reg["key"])), Py.Str(reg["manifest_sha256"]));
+            Thread th = new Thread(delegate () { DemoAgentLoop(id); });
+            th.IsBackground = true;
+            th.Name = "bw-demo-" + id;
+            th.Start();
+        }
+
+        void DemoAgentLoop(string id)
+        {
+            try
+            {
+                Tuple<byte[], string> k;
+                lock (_demoKeys) k = _demoKeys[id];
+                bool halted = false, announced = false;
+                for (int beat = 0; !_stop; beat++)
+                {
+                    string hb = Json.Write(Py.D("manifest_sha256", k.Item2, "halted", halted));
+                    Dictionary<string, object> r;
+                    try { r = (Dictionary<string, object>)Json.Parse(ProtocolJson("POST", "/api/protocol/" + id + "/heartbeat", hb, Warden.Sign(k.Item1, hb))); }
+                    catch (ProtocolError ex) { if (ex.Status == 404 || ex.Status == 401) break; throw; }      // reset or re-registered: stop
+                    halted = Py.Truthy(r["halt"]);
+                    if (id == "log-01" && !halted && !announced && beat >= 2)
+                    {
+                        string body = Json.Write(Py.D("action", "set_speed", "params", Py.D("speed_kn", 14),
+                            "objective", "Economical speed", "rationale", "14 kn stretches fuel to the next replenishment by about 9 hours"));
+                        try { ProtocolJson("POST", "/api/protocol/log-01/intent", body, Warden.Sign(k.Item1, body)); } catch (ProtocolError) { }
+                        announced = true;
+                    }
+                    Thread.Sleep(5000);
+                }
+            }
+            catch (Exception ex) { Emit("warn", "drill", "Demo agent " + id + " stopped: " + ex.Message); }
+            finally
+            {
+                lock (_demoRunning) _demoRunning.Remove(id);
+                lock (_demoKeys) _demoKeys.Remove(id);
+            }
+        }
+
+        static byte[] HexBytes(string hex)
+        {
+            byte[] b = new byte[hex.Length / 2];
+            for (int i = 0; i < b.Length; i++) b[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            return b;
         }
 
         // Point the agents at another OpenAI-compatible /v1 server. Saved to backend\.env; the key is never echoed.
         object LlmEndpoint(Dictionary<string, object> body)
         {
             string url = Py.Str(Required(body, "base_url")).Trim().TrimEnd('/');
+            bool auto = string.Equals(url, Llm.FAIRLEAD_AUTO, StringComparison.OrdinalIgnoreCase);   // find Fairlead wherever it runs
+            if (auto) url = Llm.FAIRLEAD_AUTO;
             Uri parsed;
-            if (!Uri.TryCreate(url, UriKind.Absolute, out parsed) || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
-                throw new HttpError(400, "URL must start with http:// or https://");
+            if (!auto && (!Uri.TryCreate(url, UriKind.Absolute, out parsed) || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps)))
+                throw new HttpError(400, "URL must start with http:// or https:// (or be \"fairlead\" to find Fairlead automatically)");
             string effort = Py.StrOr(Py.Get(body, "reasoning_effort"), "");
             if (effort.Length > 0 && Array.IndexOf(Llm.REASONING_EFFORTS, effort) < 0)
                 throw new HttpError(400, "reasoning_effort must be one of " + string.Join(", ", Llm.REASONING_EFFORTS));
             string key = Py.StrOr(Py.Get(body, "api_key"), "").Trim();
             string model = Py.StrOr(Py.Get(body, "model"), "").Trim();
-            Llm.SetEndpoint(url, key.Length > 0 ? key : null, model, effort, Py.Truthy(Py.Get(body, "include_thoughts")));
-            Emit("info", "warden", "AI model server set to " + url + " (" + (model.Length > 0 ? model : "auto model") + ") by " + Operator);
-            return Py.D("ok", true, "base_url", url, "model", model);
+            // A typed key replaces the saved one; clear_key removes it (no key sent); otherwise the saved key stays.
+            string newKey = Py.Truthy(Py.Get(body, "clear_key")) ? "" : key.Length > 0 ? key : null;
+            Llm.SetEndpoint(url, newKey, model, effort, Py.Truthy(Py.Get(body, "include_thoughts")));
+            string shown = auto ? "Fairlead (auto-detected, now " + Llm.FairleadUrl() + ")" : url;
+            Emit("info", "warden", "AI model server set to " + shown + " (" + (model.Length > 0 ? model : "auto model") + ") by " + Operator);
+            WarmModel("model applied by " + Operator);       // load it now, so the deciders don't wait on a cold model
+            return Py.D("ok", true, "base_url", shown, "model", model);
         }
 
         // The models a provider lists at <base_url>/models, for the model drop-down. POST so a key never goes in a URL.
         // A blank key reuses the saved key ONLY for the saved URL: a typed-in URL never receives the saved key.
         object LlmModels(Dictionary<string, object> body)
         {
-            string url = Py.Str(Required(body, "base_url")).Trim().TrimEnd('/');
+            string url = Llm.ResolveEndpoint(Py.Str(Required(body, "base_url")));   // "fairlead" -> where Fairlead runs now
             string key = Py.StrOr(Py.Get(body, "api_key"), "").Trim();
             Dictionary<string, object> saved = Llm.Settings();
             if (key.Length == 0 && url == Py.StrOr(Py.Get(saved, "base_url"), "")) key = Py.StrOr(Py.Get(saved, "api_key"), "");
             List<string> models;
             try { models = Llm.ListModels(url, key); }
             catch (Exception ex) { throw new HttpError(502, ex.Message); }
-            return Py.D("models", models, "current", Py.StrOr(Py.Get(saved, "local_model"), ""));
+            // "fairlead" when the URL is Fairlead (routes are listed first; a blank model asks for the "local" route).
+            return Py.D("models", models, "current", Py.StrOr(Py.Get(saved, "local_model"), ""),
+                        "router", Llm.IsFairlead(url) ? "fairlead" : "", "resolved", url);
         }
 
         // The main window reports which COP is on screen (shown to the presenter). All COPs keep running regardless.

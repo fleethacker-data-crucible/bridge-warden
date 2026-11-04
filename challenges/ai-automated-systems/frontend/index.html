@@ -51,10 +51,34 @@
   </div>
 </div>
 <div class="sr-only" id="page-status" role="status" aria-live="polite"></div>
+<button type="button" class="chat-toggle" id="chat-toggle" aria-expanded="false" aria-controls="chat-panel">Ask Warden</button>
+<section class="chat-panel" id="chat-panel" aria-labelledby="chat-title" hidden>
+  <div class="chat-head">
+    <h2 id="chat-title">Ask Warden</h2>
+    <span class="muted" id="chat-model">local model · proposes, never acts</span>
+    <button type="button" class="chat-close" id="chat-close" aria-label="Close chat">×</button>
+  </div>
+  <div class="chat-log" id="chat-log" role="log" aria-live="polite">
+    <div class="chat-msg assistant"><div class="chat-text">Ask me about the picture, the agents or any decision. I can propose actions such as pausing an agent; nothing happens until you confirm it.</div>
+      <div class="chat-suggests">
+        <button type="button" class="chat-suggest">What is the biggest threat right now?</button>
+        <button type="button" class="chat-suggest">Why did the Tactical Action Officer make its last decision?</button>
+        <button type="button" class="chat-suggest">Summarize the last few minutes for the oncoming watch.</button>
+      </div>
+    </div>
+  </div>
+  <form class="chat-form" id="chat-form">
+    <label class="sr-only" for="chat-input">Message to the Warden assistant</label>
+    <textarea id="chat-input" rows="2" placeholder="Ask about the ship, an agent or a decision…"></textarea>
+    <button type="submit" class="btn primary" id="chat-send">Send</button>
+  </form>
+  <div class="sr-only" id="chat-status" role="status" aria-live="polite"></div>
+</section>
 <script src="js/common.js"></script>
 <script src="js/notify.js"></script>
 <script src="js/oversight.js"></script>
 <script src="js/cops.js"></script>
 <script src="js/app.js"></script>
+<script src="js/chat.js"></script>
 </body>
 </html>
