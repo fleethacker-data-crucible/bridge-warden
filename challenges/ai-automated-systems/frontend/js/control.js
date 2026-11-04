@@ -242,7 +242,7 @@ async function loadModels() {
         const r = await BW.api('POST', '/api/llm/models', { base_url: url, api_key: $('llm-key').value });
         setModelOptions(r.models);
         info.textContent = r.router === 'fairlead'
-            ? `Fairlead: ${r.models.length} routes and models. Auto = the "local" route (phoenix-lai). Key from Credential Manager.`
+            ? `Fairlead at ${r.resolved}: ${r.models.length} routes and models. Model auto = its "local" route. Key from Credential Manager.`
             : r.models.length ? `${r.models.length} model${r.models.length === 1 ? '' : 's'} at this server.`
                               : 'The server lists no models (none loaded?).';
     } catch (e) {
@@ -254,9 +254,10 @@ async function loadModels() {
     }
 }
 $('llm-refresh').addEventListener('click', loadModels);
-// Fairlead preset: its default address; model auto (= Fairlead's "local" route). Apply saves it.
+// Fairlead preset: "fairlead" = found automatically wherever Fairlead runs (its CLI file, else 8776); model auto
+// (= Fairlead's "local" route). Apply saves it.
 $('llm-fairlead').addEventListener('click', () => {
-    $('llm-url').value = 'http://127.0.0.1:8776/v1';
+    $('llm-url').value = 'fairlead';
     $('llm-key').value = '';
     setModelOptions([], '');
     loadModels();
@@ -265,7 +266,7 @@ $('llm-url').addEventListener('change', loadModels);
 BW.onState((s) => {
     if (llmFilled || !s) return;
     llmFilled = true;
-    $('llm-url').value = s.server.llm.base_url;
+    $('llm-url').value = s.server.llm.endpoint === 'fairlead' ? 'fairlead' : s.server.llm.base_url;   // keep auto-detect on Apply
     setModelOptions([], s.server.llm.local_model);
     loadModels();
     $('llm-effort').value = s.server.llm.reasoning_effort;

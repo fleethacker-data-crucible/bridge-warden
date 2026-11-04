@@ -27,6 +27,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -146,7 +147,12 @@ namespace BridgeWarden
             string baseUrl = Getenv("LLM_URL");
             if (string.IsNullOrEmpty(baseUrl)) baseUrl = Getenv("BRIDGEWARDEN_AI_ENDPOINT_URL");
             if (string.IsNullOrEmpty(baseUrl)) baseUrl = Getenv("LLM_BASE_URL", DEFAULT_BASE_URL);
+            // "fairlead" = find Fairlead wherever it is running (FairleadUrl); the setting stays "fairlead".
+            string endpoint = baseUrl.Trim();
+            bool auto = string.Equals(endpoint, FAIRLEAD_AUTO, StringComparison.OrdinalIgnoreCase);
+            if (auto) baseUrl = FairleadUrl();
             return Py.D(
+                "endpoint", auto ? FAIRLEAD_AUTO : "",
                 "mode", Getenv("LLM_MODE", "cached"),
                 "provider", Getenv("LLM_PROVIDER", ""),
                 "model", Getenv("LLM_MODEL", ""),
@@ -195,6 +201,90 @@ namespace BridgeWarden
         // endpoint whose origin answers /__fleethacker/id with "tool":"fairlead". Re-checked every 30 s.
         public const string FAIRLEAD_DEFAULT_URL = "http://127.0.0.1:8776/v1";
         public const string FAIRLEAD_ROUTE = "local";
+
+        // LLM_BASE_URL=fairlead: find Fairlead's gateway instead of fixing an address. Fairlead moves off 8776 when
+        // that port is busy, and records where it really listens in its CLI access file
+        // (%FAIRLEAD_DATA_DIR% or %LOCALAPPDATA%\Fairlead\fairlead-cli.json: url, gateway, pid), the same file its own
+        // command line uses. Order: that file (process alive, loopback, answers /__fleethacker/id as Fairlead), then
+        // the registry address 8776. Only url, gateway and pid are read; the admin token in that file is never touched.
+        // Re-resolved every 30 s, so a Fairlead restart on another port is picked up without restarting Bridge Warden.
+        public const string FAIRLEAD_AUTO = "fairlead";
+        static string _fairleadUrl;
+        static double _fairleadAt;
+        static readonly object _fairleadLock = new object();
+
+        public static string FairleadDataDir()
+        {
+            string d = System.Environment.GetEnvironmentVariable("FAIRLEAD_DATA_DIR");
+            if (!string.IsNullOrEmpty(d)) return d;
+            return System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "Fairlead");
+        }
+
+        // Where a running Fairlead says it listens, or null. Two kinds of file, same fields (url, gateway, pid):
+        //   1. its CLI access file, %FAIRLEAD_DATA_DIR% or %LOCALAPPDATA%\Fairlead\fairlead-cli.json (current Fairlead)
+        //   2. its runtime files, %FAIRLEAD_HOME%\logs\fairlead-server-<pid>.json (every Fairlead; older builds write
+        //      only these, in their own folder, so FAIRLEAD_HOME names that folder), newest first
+        // A file counts only while its process is alive and its address is loopback and answers as Fairlead.
+        public static string FairleadFromFile()
+        {
+            List<string> files = new List<string>();
+            files.Add(System.IO.Path.Combine(FairleadDataDir(), "fairlead-cli.json"));
+            string home = System.Environment.GetEnvironmentVariable("FAIRLEAD_HOME");
+            if (!string.IsNullOrEmpty(home))
+            {
+                try
+                {
+                    string logs = System.IO.Path.Combine(home, "logs");
+                    if (System.IO.Directory.Exists(logs))
+                        files.AddRange(new System.IO.DirectoryInfo(logs).GetFiles("fairlead-server-*.json")
+                            .OrderByDescending(f => f.LastWriteTimeUtc).Select(f => f.FullName));
+                }
+                catch (Exception) { }
+            }
+            foreach (string path in files)
+            {
+                string gw = GatewayIn(path);
+                if (gw != null) return gw;
+            }
+            return null;
+        }
+
+        static string GatewayIn(string path)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(path)) return null;
+                Dictionary<string, object> info = Py.DictOrEmpty(Json.Parse(Paths.ReadText(path)));
+                int pid = (int)Py.Num(Py.Get(info, "pid", 0));
+                if (pid <= 0) return null;
+                try { using (System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById(pid)) { if (p.HasExited) return null; } }
+                catch (ArgumentException) { return null; }          // no such process: the file is left over from an old run
+                string gw = Py.StrOr(Py.Get(info, "gateway"), "");
+                if (gw.Length == 0) { string u = Py.StrOr(Py.Get(info, "url"), ""); if (u.Length > 0) gw = u.TrimEnd('/') + "/v1"; }
+                gw = gw.TrimEnd('/');
+                return IsLoopback(gw) && IsFairlead(gw) ? gw : null;
+            }
+            catch (Exception) { return null; }                      // unreadable file: try the next source
+        }
+
+        // A URL as typed in Warden Control: "fairlead" becomes the address Fairlead is running at; anything else as is.
+        public static string ResolveEndpoint(string url)
+        {
+            string u = (url ?? "").Trim();
+            return string.Equals(u, FAIRLEAD_AUTO, StringComparison.OrdinalIgnoreCase) ? FairleadUrl() : u.TrimEnd('/');
+        }
+
+        public static string FairleadUrl()
+        {
+            lock (_fairleadLock)
+                if (_fairleadUrl != null && Py.Now() - _fairleadAt < 30) return _fairleadUrl;
+            string url = FairleadFromFile();
+            if (url == null && IsFairlead(FAIRLEAD_DEFAULT_URL)) url = FAIRLEAD_DEFAULT_URL;
+            bool found = url != null;
+            if (!found) url = FAIRLEAD_DEFAULT_URL;                  // not running: errors then name the usual address
+            lock (_fairleadLock) { _fairleadUrl = url; _fairleadAt = found ? Py.Now() : Py.Now() - 25; }   // retry in 5 s when not found
+            return url;
+        }
         static readonly Dictionary<string, KeyValuePair<bool, double>> _router = new Dictionary<string, KeyValuePair<bool, double>>();
 
         public static bool IsFairlead(string baseUrl)
@@ -219,7 +309,11 @@ namespace BridgeWarden
         }
 
         // Forget what each endpoint turned out to be (after the operator changes the endpoint; tests).
-        public static void ForgetRouters() { lock (_router) _router.Clear(); }
+        public static void ForgetRouters()
+        {
+            lock (_router) _router.Clear();
+            lock (_fairleadLock) _fairleadUrl = null;
+        }
 
         // Headers Fairlead wants on every request; none for other servers.
         static Dictionary<string, string> Headers(Dictionary<string, object> s)
@@ -320,7 +414,7 @@ namespace BridgeWarden
         public static List<string> ListModels(string baseUrl, string apiKey)
         {
             Dictionary<string, object> s = Settings();
-            s["base_url"] = (baseUrl ?? "").Trim().TrimEnd('/');
+            s["base_url"] = ResolveEndpoint(baseUrl);
             s["api_key"] = apiKey ?? "";
             CheckEndpoint(s);
             string body;

@@ -76,6 +76,65 @@ Describe 'Fairlead connection' {
     }
 }
 
+Describe 'Finding Fairlead (LLM_BASE_URL=fairlead)' {
+    BeforeEach {
+        $script:Dir = Join-Path ([IO.Path]::GetTempPath()) ('bw-fl-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $script:Dir | Out-Null
+        [Environment]::SetEnvironmentVariable('FAIRLEAD_DATA_DIR', $script:Dir)
+        [BridgeWarden.Llm]::ForgetRouters()
+    }
+    AfterEach {
+        if ($script:Fake) { $script:Fake.Dispose(); $script:Fake = $null }
+        foreach ($v in $script:Vars + 'FAIRLEAD_DATA_DIR') { [Environment]::SetEnvironmentVariable($v, $null) }
+        [BridgeWarden.Llm]::ForgetRouters()
+        Remove-Item -LiteralPath $script:Dir -Recurse -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 200
+    }
+
+    It 'uses the gateway Fairlead recorded in its CLI file (any port)' {
+        $script:Fake = New-Object BridgeWardenTests.FakeSse($script:Port, [string[]]@('{"content": "ok"}'), $true)
+        # Only url, gateway and pid are read; a token in the file is ignored.
+        Set-Content -LiteralPath (Join-Path $script:Dir 'fairlead-cli.json') -Encoding ASCII -Value (
+            '{"pid":' + $PID + ',"url":"http://localhost:' + $script:Port + '/","gateway":"http://localhost:' + $script:Port + '/v1","token":"dpapi:not-read"}')
+        [Environment]::SetEnvironmentVariable('LLM_BASE_URL', 'fairlead')
+        $s = [BridgeWarden.Llm]::Settings()
+        $s['base_url'] | Should -Be "http://localhost:$($script:Port)/v1"
+        $s['endpoint'] | Should -Be 'fairlead'
+        [BridgeWarden.Llm]::ResolveEndpoint('Fairlead') | Should -Be "http://localhost:$($script:Port)/v1"
+    }
+
+    It 'reads an older Fairlead''s runtime file from FAIRLEAD_HOME\logs' {
+        $script:Fake = New-Object BridgeWardenTests.FakeSse($script:Port, [string[]]@('{"content": "ok"}'), $true)
+        $home2 = Join-Path $script:Dir 'app'
+        New-Item -ItemType Directory -Path (Join-Path $home2 'logs') | Out-Null
+        Set-Content -LiteralPath (Join-Path $home2 ('logs\fairlead-server-' + $PID + '.json')) -Encoding ASCII -Value (
+            '{"pid":' + $PID + ',"url":"http://localhost:' + $script:Port + '/","gateway":"http://localhost:' + $script:Port + '/v1"}')
+        [Environment]::SetEnvironmentVariable('FAIRLEAD_HOME', $home2)
+        try { [BridgeWarden.Llm]::FairleadFromFile() | Should -Be "http://localhost:$($script:Port)/v1" }
+        finally { [Environment]::SetEnvironmentVariable('FAIRLEAD_HOME', $null) }
+    }
+
+    It 'ignores a CLI file left over from a Fairlead that has exited' {
+        Set-Content -LiteralPath (Join-Path $script:Dir 'fairlead-cli.json') -Encoding ASCII -Value (
+            '{"pid":999999,"gateway":"http://localhost:' + $script:Port + '/v1"}')
+        [BridgeWarden.Llm]::FairleadFromFile() | Should -BeNullOrEmpty
+    }
+
+    It 'ignores a CLI file that points at something that is not Fairlead' {
+        $script:Fake = New-Object BridgeWardenTests.FakeSse($script:Port, [string[]]@('{"content": "ok"}'), $false)
+        Set-Content -LiteralPath (Join-Path $script:Dir 'fairlead-cli.json') -Encoding ASCII -Value (
+            '{"pid":' + $PID + ',"gateway":"http://localhost:' + $script:Port + '/v1"}')
+        [BridgeWarden.Llm]::FairleadFromFile() | Should -BeNullOrEmpty
+    }
+
+    It 'falls back to the registry address when no Fairlead is found' {
+        [Environment]::SetEnvironmentVariable('LLM_BASE_URL', 'fairlead')
+        if (-not [BridgeWarden.Llm]::IsFairlead('http://127.0.0.1:8776/v1')) {
+            [BridgeWarden.Llm]::Settings()['base_url'] | Should -Be 'http://127.0.0.1:8776/v1'
+        }
+    }
+}
+
 Describe 'Port block' {
     It 'never reaches Fairlead''s 8776' {
         $ports = Import-PowerShellDataFile (Join-Path $script:HostDir 'FleetPorts.psd1')

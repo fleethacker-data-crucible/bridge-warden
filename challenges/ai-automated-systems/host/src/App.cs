@@ -119,7 +119,7 @@ namespace BridgeWarden
                 s["resources"] = meter.Sample();
                 Dictionary<string, object> llmSettings = new Dictionary<string, object>();
                 foreach (KeyValuePair<string, object> kv in Llm.Settings())
-                    if (Array.IndexOf(new[] { "mode", "provider", "model", "local_model", "base_url", "reasoning_effort", "include_thoughts" }, kv.Key) >= 0)
+                    if (Array.IndexOf(new[] { "mode", "provider", "model", "local_model", "base_url", "endpoint", "reasoning_effort", "include_thoughts" }, kv.Key) >= 0)
                         llmSettings[kv.Key] = kv.Value;
                 Dictionary<string, object> agentsLlm = new Dictionary<string, object>(LlmAgent.SCHEDULER.stats);
                 agentsLlm["queue"] = LlmAgent.SCHEDULER.Depth();
@@ -482,24 +482,27 @@ namespace BridgeWarden
         object LlmEndpoint(Dictionary<string, object> body)
         {
             string url = Py.Str(Required(body, "base_url")).Trim().TrimEnd('/');
+            bool auto = string.Equals(url, Llm.FAIRLEAD_AUTO, StringComparison.OrdinalIgnoreCase);   // find Fairlead wherever it runs
+            if (auto) url = Llm.FAIRLEAD_AUTO;
             Uri parsed;
-            if (!Uri.TryCreate(url, UriKind.Absolute, out parsed) || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
-                throw new HttpError(400, "URL must start with http:// or https://");
+            if (!auto && (!Uri.TryCreate(url, UriKind.Absolute, out parsed) || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps)))
+                throw new HttpError(400, "URL must start with http:// or https:// (or be \"fairlead\" to find Fairlead automatically)");
             string effort = Py.StrOr(Py.Get(body, "reasoning_effort"), "");
             if (effort.Length > 0 && Array.IndexOf(Llm.REASONING_EFFORTS, effort) < 0)
                 throw new HttpError(400, "reasoning_effort must be one of " + string.Join(", ", Llm.REASONING_EFFORTS));
             string key = Py.StrOr(Py.Get(body, "api_key"), "").Trim();
             string model = Py.StrOr(Py.Get(body, "model"), "").Trim();
             Llm.SetEndpoint(url, key.Length > 0 ? key : null, model, effort, Py.Truthy(Py.Get(body, "include_thoughts")));
-            Emit("info", "warden", "AI model server set to " + url + " (" + (model.Length > 0 ? model : "auto model") + ") by " + Operator);
-            return Py.D("ok", true, "base_url", url, "model", model);
+            string shown = auto ? "Fairlead (auto-detected, now " + Llm.FairleadUrl() + ")" : url;
+            Emit("info", "warden", "AI model server set to " + shown + " (" + (model.Length > 0 ? model : "auto model") + ") by " + Operator);
+            return Py.D("ok", true, "base_url", shown, "model", model);
         }
 
         // The models a provider lists at <base_url>/models, for the model drop-down. POST so a key never goes in a URL.
         // A blank key reuses the saved key ONLY for the saved URL: a typed-in URL never receives the saved key.
         object LlmModels(Dictionary<string, object> body)
         {
-            string url = Py.Str(Required(body, "base_url")).Trim().TrimEnd('/');
+            string url = Llm.ResolveEndpoint(Py.Str(Required(body, "base_url")));   // "fairlead" -> where Fairlead runs now
             string key = Py.StrOr(Py.Get(body, "api_key"), "").Trim();
             Dictionary<string, object> saved = Llm.Settings();
             if (key.Length == 0 && url == Py.StrOr(Py.Get(saved, "base_url"), "")) key = Py.StrOr(Py.Get(saved, "api_key"), "");
@@ -508,7 +511,7 @@ namespace BridgeWarden
             catch (Exception ex) { throw new HttpError(502, ex.Message); }
             // "fairlead" when the URL is Fairlead (routes are listed first; a blank model asks for the "local" route).
             return Py.D("models", models, "current", Py.StrOr(Py.Get(saved, "local_model"), ""),
-                        "router", Llm.IsFairlead(url) ? "fairlead" : "");
+                        "router", Llm.IsFairlead(url) ? "fairlead" : "", "resolved", url);
         }
 
         // The main window reports which COP is on screen (shown to the presenter). All COPs keep running regardless.
