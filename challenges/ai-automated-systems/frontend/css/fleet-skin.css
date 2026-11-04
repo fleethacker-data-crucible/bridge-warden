@@ -1,0 +1,64 @@
+/* FLEET UI REQUIREMENTS MUST BE APPLIED. Default look is Fleet. Do not change without Anthony's yes. See AGENTS.md. */
+/* Bridge Warden: Fleet skin (Fleet Unified UI v0.2, vendor/fleet/fleet.css, the look every Fleet app shares).
+   Every rule is scoped under html[data-skin="fleet"], so it does nothing until js/skin.js sets the attribute, and
+   js/skin.js loads vendor/fleet/fleet.css only while this skin is on. Same pattern as kit-skin.css.
+   Mostly variable swaps: Bridge Warden's own tokens point at the --fl-* tokens, so no raw colors live here apart
+   from Bridge Warden's signature accent (Fleet section 3.3) and two fills that carry white text.
+   Night watch only: skin.js pins data-theme="dark", because the COP pictures (js/cops.js) are drawn for a dark
+   scope. Chart room needs those pictures redrawn first.
+   Removing the skin = deleting this file, vendor/fleet and the "fleet" branch in js/skin.js. */
+
+/* Signature accent: signal-lamp cyan (the Aldis lamp a bridge watch answers with). 8.9:1 on Night watch
+   background; the fill shade carries white text at 5.6:1. */
+html[data-skin="fleet"] {
+  --fl-accent-night: #5ec8e0; --fl-accent-chart: #0b6a80;
+  --bw-accent-fill: #0b6a80; --bw-accent-fill-hover: #0e7a92;
+  --bw-success-fill: #2f7d57;                  /* Chart room success: white text 5.1:1 */
+
+  --bg-titlebar: var(--fl-sidebar); --bg-app: var(--fl-background); --bg-panel: var(--fl-surface);
+  --bg-inset: var(--fl-sidebar); --bg-tile: var(--fl-card); --bg-row: var(--fl-muted);
+  --bg-row-hover: var(--fl-border-strong); --bg-modal: var(--fl-popover);
+  --scrim: rgb(3 12 18 / 0.6);
+  /* --border-strong outlines controls, so it takes the 3:1 control border; --border stays decorative. */
+  --border: var(--fl-border); --border-strong: var(--fl-control-border);
+  --text: var(--fl-foreground); --text-muted: var(--fl-muted-foreground); --text-dim: var(--fl-muted-foreground);
+
+  --blue: var(--fl-accent); --blue-fill: var(--bw-accent-fill); --blue-hover: var(--bw-accent-fill-hover);
+  --green: var(--fl-success); --green-hover: var(--fl-success);
+  --orange: var(--fl-warning); --orange-hover: var(--fl-warning);
+  --red: var(--fl-danger); --red-fill: #b8382b; --red-hover: #a53226;
+  --grey-btn: var(--fl-muted); --grey-btn-hover: var(--fl-border-strong);
+  --logo-control: var(--fl-card); --logo-app: var(--fl-card);
+  --badge-green: var(--fl-success); --badge-blue: var(--fl-info); --badge-purple: #9b98f3;
+  --badge-yellow: var(--fl-warning); --badge-red: var(--fl-danger); --badge-grey: var(--fl-muted-foreground);
+  --pct-low: var(--fl-danger); --pct-mid: var(--fl-warning); --pct-high: var(--fl-success);
+  --log-time: var(--fl-muted-foreground); --log-system: var(--fl-brass); --log-engine: var(--fl-accent);
+  --log-ok: var(--fl-success); --log-warn: var(--fl-warning); --log-error: var(--fl-danger);
+  --log-highlight-bg: var(--bw-success-fill); --log-highlight-fg: var(--fl-foreground);
+  --state-off: var(--fl-border);
+
+  --radius-xs: 4px; --radius-sm: var(--fl-radius-control); --radius: var(--fl-radius-control); --radius-lg: var(--fl-radius-card);
+  --font-ui: var(--fl-font-body);
+  --font-mono: var(--fl-font-mono);
+}
+
+/* Fills that carry white text use the darker shades (WCAG 1.4.3). */
+html[data-skin="fleet"] .at-active, html[data-skin="fleet"] .hold-btn.green, html[data-skin="fleet"] .n-success { background: var(--bw-success-fill); }
+html[data-skin="fleet"] .n-warn { background: #8a5a10; }
+
+/* Brass focus ring (Fleet section 7). */
+html[data-skin="fleet"] :focus-visible { outline: 2px solid var(--fl-brass); outline-offset: 2px; }
+
+/* Brand frame (Fleet section 8): the Bridge Warden emblem replaces the BW letter tile, and the app title is the
+   display serif in ivory with a brass rule under the header. */
+html[data-skin="fleet"] .header { border-bottom: 1px solid var(--fl-brass); }
+html[data-skin="fleet"] .logo { width: 44px; height: 44px; background: url("../img/emblem-96.png") center / contain no-repeat;
+  color: transparent; font-size: 0; border-radius: 50%; }
+html[data-skin="fleet"] .title { font-family: var(--fl-font-display); color: var(--fl-foreground); letter-spacing: .02em; }
+html[data-skin="fleet"] .logo.app { min-height: 0; }
+
+/* Cards use borders, not shadows (Fleet section 5). */
+html[data-skin="fleet"] .panel { border-color: var(--fl-border); }
+
+/* SAFE-STOP / RESUME hold button keeps its stacked layout and white hint text on the red fill. */
+html[data-skin="fleet"] .hold-btn .sub { color: #ffffff; }

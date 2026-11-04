@@ -2,6 +2,19 @@
 
 Instructions for any AI agent or model working in this repo. This is the only instruction file. `CLAUDE.md`, `GEMINI.md` and `.github/copilot-instructions.md` just point here. Chat-only models (ChatGPT, Grok in a browser) can't see the repo, so paste this file in at the start of a session.
 
+## Fleet UI is mandatory (do not change)
+
+**This rule applies to every AI agent and every contributor, including people who are not developers.**
+
+- The Fleet Unified UI requirements MUST be applied to every screen. They are the file `docs/design/style-guide.md` plus the Fleet UI v0.2 tokens in `challenges/ai-automated-systems/frontend/vendor/fleet/fleet.css`.
+- The Fleet look (navy and brass, with the Fleet emblem in the header) is the DEFAULT look. It is set in `challenges/ai-automated-systems/frontend/js/skin.js` (`data-skin="fleet"`) and must stay the default.
+- Do not remove, disable, re-order or change the default of the Fleet skin.
+- Do not edit `vendor/fleet/fleet.css` by hand. It is copied from the Fleet repos; make the change there instead.
+- New screens and parts must use the `--fl-*` tokens and the Fleet components. No raw hex colors in new component styles.
+- Night watch (dark) is used only for the COP pictures for now.
+- If a change would break a Fleet UI rule, STOP and ask Anthony (sun-of-anton). Do not work around it.
+- Anthony set this rule, and only he may change or remove it.
+
 ## Context
 Team **Data Crucible** at the **FLEETHACKER** hackathon. Each fact lives in one doc; this file points to it.
 
