@@ -506,7 +506,9 @@ namespace BridgeWarden
             List<string> models;
             try { models = Llm.ListModels(url, key); }
             catch (Exception ex) { throw new HttpError(502, ex.Message); }
-            return Py.D("models", models, "current", Py.StrOr(Py.Get(saved, "local_model"), ""));
+            // "fairlead" when the URL is Fairlead (routes are listed first; a blank model asks for the "local" route).
+            return Py.D("models", models, "current", Py.StrOr(Py.Get(saved, "local_model"), ""),
+                        "router", Llm.IsFairlead(url) ? "fairlead" : "");
         }
 
         // The main window reports which COP is on screen (shown to the presenter). All COPs keep running regardless.

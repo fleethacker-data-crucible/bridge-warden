@@ -30,6 +30,9 @@ namespace BridgeWardenTests
     {
         public static Action<string, string, string> NoEmit() { return delegate(string a, string b, string c) { }; }
 
+        // A stand-in for FairleadKey.Reader (Credential Manager), safe on worker threads. null = no key installed.
+        public static Func<string> Key(string key) { return delegate { return key; }; }
+
         // lambda prompt, s: text
         public static Func<object, Dictionary<string, object>, string> Const(string text)
         {
@@ -84,11 +87,18 @@ namespace BridgeWardenTests
     {
         readonly HttpListener _l = new HttpListener();
         readonly string[] _chunks;
+        readonly bool _fairlead;
         public readonly List<string> seen = new List<string>();
+        public readonly List<string> auth = new List<string>();     // Authorization header of each model call
+        public readonly List<string> labels = new List<string>();   // X-Fairlead-Label header of each model call
 
-        public FakeSse(int port, string[] chunkJson)
+        // fairlead = answer /__fleethacker/id as Fairlead does; otherwise 404 there, like any non-FleetHacker server.
+        public FakeSse(int port, string[] chunkJson) : this(port, chunkJson, false) { }
+
+        public FakeSse(int port, string[] chunkJson, bool fairlead)
         {
             _chunks = chunkJson;
+            _fairlead = fairlead;
             _l.Prefixes.Add("http://localhost:" + port + "/");
             _l.Start();
             Thread th = new Thread(Serve);
@@ -106,14 +116,25 @@ namespace BridgeWardenTests
                 {
                     string body = new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEnd();
                     string outText;
-                    if (ctx.Request.Url.AbsolutePath.EndsWith("/models"))
+                    if (ctx.Request.Url.AbsolutePath == "/__fleethacker/id")
+                    {
+                        if (!_fairlead) { ctx.Response.StatusCode = 404; ctx.Response.OutputStream.Close(); continue; }
+                        ctx.Response.ContentType = "application/json";
+                        outText = "{\"tool\":\"fairlead\",\"version\":\"test\",\"pid\":1}";
+                    }
+                    else if (ctx.Request.Url.AbsolutePath.EndsWith("/models"))
                     {
                         ctx.Response.ContentType = "application/json";
                         outText = "{\"data\": [{\"id\": \"fake-model\"}]}";
                     }
                     else
                     {
-                        lock (seen) seen.Add(body);
+                        lock (seen)
+                        {
+                            seen.Add(body);
+                            auth.Add(ctx.Request.Headers["Authorization"] ?? "");
+                            labels.Add(ctx.Request.Headers["X-Fairlead-Label"] ?? "");
+                        }
                         StringBuilder sb = new StringBuilder();
                         foreach (string c in _chunks) sb.Append("data: {\"choices\": [{\"delta\": " + c + "}]}\n\n");
                         sb.Append("data: [DONE]\n\n");

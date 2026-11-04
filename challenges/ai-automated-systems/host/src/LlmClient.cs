@@ -49,7 +49,8 @@ namespace BridgeWarden
             }
         }
 
-        static HttpWebRequest Make(string url, string method, string bearer, double timeoutS, string accept)
+        static HttpWebRequest Make(string url, string method, string bearer, double timeoutS, string accept,
+                                   System.Collections.Generic.IDictionary<string, string> headers = null)
         {
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             req.Method = method;
@@ -60,6 +61,7 @@ namespace BridgeWarden
             req.ReadWriteTimeout = ms;              // each read of the body
             if (accept != null) req.Accept = accept;
             if (bearer != null) req.Headers[HttpRequestHeader.Authorization] = "Bearer " + bearer;
+            if (headers != null) foreach (var kv in headers) req.Headers[kv.Key] = kv.Value;   // e.g. X-Fairlead-Label
             if (req.RequestUri.IsLoopback) req.Proxy = null;   // a local model never goes through a proxy
             return req;
         }
@@ -77,9 +79,10 @@ namespace BridgeWarden
         }
 
         // POST <url> with a JSON body (chat completions, stream: true). bearer null = no Authorization header.
-        public static Response PostJson(string url, string json, string bearer, double timeoutS, string accept = "text/event-stream")
+        public static Response PostJson(string url, string json, string bearer, double timeoutS, string accept = "text/event-stream",
+                                        System.Collections.Generic.IDictionary<string, string> headers = null)
         {
-            HttpWebRequest req = Make(url, "POST", bearer, timeoutS, accept);
+            HttpWebRequest req = Make(url, "POST", bearer, timeoutS, accept, headers);
             byte[] body = new UTF8Encoding(false).GetBytes(json);
             req.ContentType = "application/json";
             req.ContentLength = body.Length;
@@ -88,9 +91,10 @@ namespace BridgeWarden
         }
 
         // GET <url> (e.g. <base_url>/models). bearer null = no Authorization header.
-        public static Response Get(string url, string bearer, double timeoutS)
+        public static Response Get(string url, string bearer, double timeoutS,
+                                   System.Collections.Generic.IDictionary<string, string> headers = null)
         {
-            return Send(Make(url, "GET", bearer, timeoutS, "application/json"));
+            return Send(Make(url, "GET", bearer, timeoutS, "application/json", headers));
         }
     }
 }

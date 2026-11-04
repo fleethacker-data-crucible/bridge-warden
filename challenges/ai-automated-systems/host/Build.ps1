@@ -17,14 +17,20 @@ $script:BwBanned = [ordered]@{
 # The only exceptions, one file each:
 #   WebServer.cs  HttpListener on 127.0.0.1 / localhost (the UI and the FleetHacker endpoints)
 #   LlmClient.cs  outbound HTTP to the configured OpenAI-compatible /v1 server (local phoenix-lai by default)
-#   Ledger.cs     the SQLite built into Windows (winsqlite3.dll), for the audit ledger
+#   Ledger.cs       the SQLite built into Windows (winsqlite3.dll), for the audit ledger
+#   FairleadKey.cs  reads ONE Windows Credential Manager entry, Fairlead/BridgeWarden (advapi32.dll CredReadW/CredFree),
+#                   the key Fairlead's Clients page installs for this tool (Fairlead docs/API.md)
 $script:BwAllowed = @{
-    'WebServer.cs' = @('System.Net')
-    'LlmClient.cs' = @('System.Net', 'WebRequest', 'https://')
-    'Ledger.cs'    = @('DllImport')
+    'WebServer.cs'   = @('System.Net')
+    'LlmClient.cs'   = @('System.Net', 'WebRequest', 'https://')
+    'Ledger.cs'      = @('DllImport')
+    'FairleadKey.cs' = @('DllImport')
 }
-# Native DLLs Ledger.cs may name (anything else in a DllImport fails the rules).
-$script:BwDllAllowlist = @('winsqlite3.dll')
+# Native DLLs each file may name (anything else in a DllImport fails the rules).
+$script:BwDllAllowlist = @{
+    'Ledger.cs'      = @('winsqlite3.dll')
+    'FairleadKey.cs' = @('advapi32.dll')
+}
 
 function Test-BwSourceRules {
     param([string[]]$Files, [string]$AppRoot)
@@ -43,7 +49,8 @@ function Test-BwSourceRules {
                 if ($allowed -contains $p) { continue }
                 if ($code.IndexOf($p, [StringComparison]::Ordinal) -ge 0) { $fail.Add("${name}:$($i + 1): $($script:BwBanned[$p]) ($p)") }
             }
-            if ($code -match 'DllImport\s*\(\s*"([^"]+)"' -and $script:BwDllAllowlist -notcontains $Matches[1]) {
+            $dlls = if ($script:BwDllAllowlist.ContainsKey($name)) { $script:BwDllAllowlist[$name] } else { @() }
+            if ($code -match 'DllImport\s*\(\s*"([^"]+)"' -and $dlls -notcontains $Matches[1]) {
                 $fail.Add("${name}:$($i + 1): native DLL not on the allowlist ($($Matches[1]))")
             }
         }

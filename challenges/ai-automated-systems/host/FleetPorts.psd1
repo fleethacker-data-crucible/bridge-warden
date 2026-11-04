@@ -13,7 +13,8 @@
     'phoenix-lai-server' = @{ Start = 8780;  Size = 10; Policy = 'exclusive' }
     'phoenix-lai-client' = @{ Start = 8790;  Size = 9;  Policy = 'multi' }
     'phoenix-lai-dev'    = @{ Start = 8799;  Size = 1;  Policy = 'restart' }
-    # Bridge Warden: PROVISIONAL, takes PORTS.md "New tool A" (8774-8776) until the edge-ops PORTS.md PR merges.
-    'bridge-warden'      = @{ Start = 8774;  Size = 3;  Policy = 'reuse' }
+    # Bridge Warden: PROVISIONAL (8774-8775) until edge-ops PORTS.md lists it. Never 8776: that is Fairlead, the
+    # model router Bridge Warden can call. 8774/8775 also overlap Eight Bells / Scrimshaw in the current registry.
+    'bridge-warden'      = @{ Start = 8774;  Size = 2;  Policy = 'reuse' }
     'talkforge'          = @{ Start = 25000; Size = 10; Policy = 'reuse' }
 }

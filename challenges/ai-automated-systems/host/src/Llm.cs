@@ -187,9 +187,57 @@ namespace BridgeWarden
                 throw new InvalidOperationException("refusing non-loopback LLM endpoint " + url + ": LLM_API_KEY is not set");
         }
 
-        // Bearer token to send, or null for none (loopback with a blank / "local" key).
+        // ---------------------------------------------------------------- Fairlead (the Fleet's model router)
+        // When the endpoint is Fairlead (http://127.0.0.1:8776/v1 by default), Bridge Warden follows Fairlead's client
+        // rules: the key comes from Windows Credential Manager (FairleadKey.cs, Fairlead/BridgeWarden; no env fallback),
+        // every request says who it is (X-Fairlead-Label: BridgeWarden), and a blank model asks for the "local" route,
+        // which Fairlead sends to the models on this machine (phoenix-lai). Detected, not configured: a loopback
+        // endpoint whose origin answers /__fleethacker/id with "tool":"fairlead". Re-checked every 30 s.
+        public const string FAIRLEAD_DEFAULT_URL = "http://127.0.0.1:8776/v1";
+        public const string FAIRLEAD_ROUTE = "local";
+        static readonly Dictionary<string, KeyValuePair<bool, double>> _router = new Dictionary<string, KeyValuePair<bool, double>>();
+
+        public static bool IsFairlead(string baseUrl)
+        {
+            Uri u;
+            if (!Uri.TryCreate(baseUrl ?? "", UriKind.Absolute, out u) || !u.IsLoopback) return false;
+            string origin = u.GetLeftPart(UriPartial.Authority);
+            lock (_router)
+            {
+                KeyValuePair<bool, double> hit;
+                if (_router.TryGetValue(origin, out hit) && Py.Now() - hit.Value < 30) return hit.Key;
+            }
+            bool yes = false;
+            try
+            {
+                using (LlmClient.Response r = LlmClient.Get(origin + "/__fleethacker/id", null, 1.0))
+                    yes = r.status == 200 && Py.Str(Py.Get(Py.DictOrEmpty(Json.Parse(r.ReadToEnd())), "tool")) == "fairlead";
+            }
+            catch (Exception) { yes = false; }     // nothing there, or not a FleetHacker tool
+            lock (_router) _router[origin] = new KeyValuePair<bool, double>(yes, Py.Now());
+            return yes;
+        }
+
+        // Forget what each endpoint turned out to be (after the operator changes the endpoint; tests).
+        public static void ForgetRouters() { lock (_router) _router.Clear(); }
+
+        // Headers Fairlead wants on every request; none for other servers.
+        static Dictionary<string, string> Headers(Dictionary<string, object> s)
+        {
+            if (!IsFairlead(S(s, "base_url"))) return null;
+            return new Dictionary<string, string> { { "X-Fairlead-Label", FairleadKey.APP_NAME } };
+        }
+
+        // Bearer token to send, or null for none (loopback with a blank / "local" key). Fairlead: its client key from
+        // Credential Manager, or a clear error telling the operator how to install one.
         static string Bearer(Dictionary<string, object> s)
         {
+            if (IsFairlead(S(s, "base_url")))
+            {
+                string fk = FairleadKey.Read();
+                if (fk == null) throw new InvalidOperationException(FairleadKey.MISSING);
+                return fk;
+            }
             string key = S(s, "api_key");
             if (IsLoopback(S(s, "base_url")) && KeyBlank(key)) return null;
             return key;
@@ -220,6 +268,7 @@ namespace BridgeWarden
             if (api_key != null) updates.Add(new KeyValuePair<string, string>("LLM_API_KEY", api_key));
             foreach (KeyValuePair<string, string> kv in updates) SetEnv(kv.Key, kv.Value);
             lock (_discovered_model) _discovered_model.Clear();
+            ForgetRouters();
             string path = Paths.EnvFile;
             List<string> lines = File.Exists(path) ? SplitLines(Paths.ReadText(path)) : new List<string>();
             foreach (KeyValuePair<string, string> kv in updates)
@@ -244,7 +293,7 @@ namespace BridgeWarden
         {
             if (S(s, "local_model").Length > 0) return S(s, "local_model");
             string baseUrl = S(s, "base_url");
-            if (IsLoopback(baseUrl)) return DEFAULT_LOCAL_MODEL;
+            if (IsLoopback(baseUrl)) return IsFairlead(baseUrl) ? FAIRLEAD_ROUTE : DEFAULT_LOCAL_MODEL;
             lock (_discovered_model)
             {
                 string m;
@@ -276,7 +325,7 @@ namespace BridgeWarden
             CheckEndpoint(s);
             string body;
             int status;
-            using (LlmClient.Response r = LlmClient.Get(S(s, "base_url") + "/models", Bearer(s), 5.0))
+            using (LlmClient.Response r = LlmClient.Get(S(s, "base_url") + "/models", Bearer(s), 5.0, Headers(s)))
             {
                 status = r.status;
                 body = r.ReadToEnd();
@@ -336,7 +385,8 @@ namespace BridgeWarden
             double sent = Py.Perf();
             Func<double> ms = delegate { return Py.Round((Py.Perf() - sent) * 1000, 1); };
             StringBuilder parts = new StringBuilder(), thoughts = new StringBuilder();
-            using (LlmClient.Response r = LlmClient.PostJson(S(s, "base_url") + "/chat/completions", Json.Write(body), Bearer(s), N(s, "timeout_s")))
+            using (LlmClient.Response r = LlmClient.PostJson(S(s, "base_url") + "/chat/completions", Json.Write(body), Bearer(s), N(s, "timeout_s"),
+                                                             "text/event-stream", Headers(s)))
             {
                 timing["headers_ms"] = ms();
                 if (r.status >= 400)

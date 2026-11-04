@@ -7,14 +7,16 @@
 ## Run it
 Nothing to install. Windows PowerShell 5.1 compiles the C# in `host\src` with `Add-Type` (C# 5, framework assemblies only) and serves the UI on loopback. From this folder:
 ```powershell
-.\run.bat                 # or .\run.ps1; opens Warden Control and the main app (port 8774, or the next free one up to 8776)
+.\run.bat                 # or .\run.ps1; opens Warden Control and the main app (port 8774, or 8775 if busy; 8776 belongs to Fairlead)
 .\run.ps1 -Edge           # low-power edge profile
 .\BridgeWarden-Dev.bat    # developer launcher: visible console, pauses on errors
 .\BridgeWarden-Dev.bat -CheckOnly   # source rules + compile only
 ```
 Then click **Start Operations** in Warden Control. The sim runs in *ops normal*; the presenter drives events from **Inject Issues…** (a column per picture, plus **Warden Tests**: compromised AI commander, rogue lookout, AI model outage). Every decision gives the operator 2 minutes, and a **periodic system check** asks the operator to confirm operations every 2 minutes (two misses → automatic SAFE-STOP). Use **SAFE-STOP** (hold 2 s) at any time. Presenter script: [docs/demo-script.md](docs/demo-script.md). For the scripted hands-off run, set `$env:SCENARIO='full_demo'` first.
 
-AI calls default to local phoenix-lai at `http://127.0.0.1:1234/v1` (model `phoenixlai`); with no model there, the deciders show the model error, urgent alerts get the lookout's doctrine option by reflex (marked REFLEX, still checked by Warden), and explanations use rule text. Settings: `backend\.env` (from `backend\.env.example`) or the AI Model Server box in Warden Control. Port block 8774-8776 is provisional until edge-ops `PORTS.md` lists Bridge Warden. The host answers `/__fleethacker/id` and `/__fleethacker/shutdown`.
+AI calls default to local phoenix-lai at `http://127.0.0.1:1234/v1` (model `phoenixlai`); with no model there, the deciders show the model error, urgent alerts get the lookout's doctrine option by reflex (marked REFLEX, still checked by Warden), and explanations use rule text. Settings: `backend\.env` (from `backend\.env.example`) or the AI Model Server box in Warden Control. Port block 8774-8775 is provisional until edge-ops `PORTS.md` lists Bridge Warden (8776 is Fairlead's). The host answers `/__fleethacker/id` and `/__fleethacker/shutdown`.
+
+**Through Fairlead (the Fleet's model router):** set the endpoint to `http://127.0.0.1:8776/v1` (**Use Fairlead** in the AI Model Server box, or `LLM_BASE_URL` in `backend\.env`). Bridge Warden detects Fairlead from its `/__fleethacker/id` and follows Fairlead's client rules: the key comes from Windows Credential Manager (`Fairlead/BridgeWarden`, installed from Fairlead's **Clients** page; `LLM_API_KEY` is not used), every request carries `X-Fairlead-Label: BridgeWarden`, and a blank model asks for Fairlead's `local` route. Point that route at phoenix-lai in Fairlead (Providers, then Routes) and Bridge Warden reaches phoenix-lai through Fairlead.
 
 Ship it as one text file: `.\Package_App.ps1` writes `Bridge_Warden.package`; `.\Unpack.ps1` rebuilds the folders on the other machine.
 

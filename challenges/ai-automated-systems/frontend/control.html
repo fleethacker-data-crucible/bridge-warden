@@ -83,7 +83,8 @@
     <div class="label blue">AI Model Server</div>
     <form class="llm-form" id="llmform" autocomplete="off">
       <input class="m-input" id="llm-url" placeholder="http://localhost:1234/v1" spellcheck="false" required>
-      <input class="m-input" id="llm-key" type="password" placeholder="API key (blank = keep current)">
+      <button class="btn" type="button" id="llm-fairlead" title="Route through Fairlead at http://127.0.0.1:8776/v1 (key from Credential Manager, Fairlead/BridgeWarden)">Use Fairlead (model router)</button>
+      <input class="m-input" id="llm-key" type="password" placeholder="API key (blank = keep current; not used for Fairlead)">
       <div class="llm-row">
         <select class="m-input" id="llm-model" title="Models the server lists at /v1/models"><option value="">Model: auto</option></select>
         <button class="btn" type="button" id="llm-refresh" title="Ask the server which models it has">Load models</button>
