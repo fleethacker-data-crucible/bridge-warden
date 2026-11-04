@@ -2,8 +2,8 @@
 //
 // Fairlead's rule (Fairlead docs/API.md, "How a tool gets its Fairlead key"): a tool reads its key from the generic
 // credential Fairlead/<AppName>, saved by Fairlead's Clients page ("install for"), stored as UTF-16 text like
-// cmdkey /generic:Fairlead/BridgeWarden /pass:... would. If it is missing the tool tells the user to open Fairlead
-// and install a key; it never falls back to an environment variable.
+// cmdkey /generic:Fairlead/BridgeWarden /pass:... would. Bridge Warden uses it when the operator has not typed a
+// key in Warden Control (a typed key wins, by operator choice); with neither, no key is sent.
 //
 // The only file allowed advapi32.dll (host\Build.ps1), and it reads exactly one target name. Nothing is written,
 // listed or cached on disk; the key lives in memory only while a request is being sent.

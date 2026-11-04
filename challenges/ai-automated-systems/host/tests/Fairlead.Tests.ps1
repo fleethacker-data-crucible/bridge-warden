@@ -46,15 +46,22 @@ Describe 'Fairlead connection' {
         ($f.seen[0] | ConvertFrom-Json).model | Should -Be 'local'
     }
 
-    It 'never uses LLM_API_KEY for Fairlead and says how to install a key when none is saved' {
+    It 'uses the key typed in Warden Control before the Credential Manager one' {
         $f = Start-Fake $true
-        Set-Env 'LLM_API_KEY' 'fl-from-env'
+        Set-Env 'LLM_API_KEY' 'fl-typed-key'
+        [BridgeWarden.FairleadKey]::Reader = [BridgeWardenTests.Fakes]::Key('fl-installed-key')
+        $r = Invoke-Explain
+        $r.source | Should -Be 'local'
+        $f.auth[0] | Should -Be 'Bearer fl-typed-key'
+    }
+
+    It 'sends no key when none is typed or installed (a Fairlead that allows it still answers)' {
+        $f = Start-Fake $true
         [BridgeWarden.FairleadKey]::Reader = [BridgeWardenTests.Fakes]::Key($null)
         $r = Invoke-Explain
-        $r.source | Should -Not -Be 'local'
-        $r.error | Should -Match 'No Fairlead key for BridgeWarden'
-        $r.error | Should -Match 'Fairlead/BridgeWarden'
-        $f.seen.Count | Should -Be 0
+        $r.source | Should -Be 'local'
+        $f.auth[0] | Should -Be ''
+        $f.labels[0] | Should -Be 'BridgeWarden'
     }
 
     It 'keeps an explicit model name instead of the route' {

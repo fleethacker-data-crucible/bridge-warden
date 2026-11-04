@@ -263,7 +263,16 @@ $('llm-fairlead').addEventListener('click', () => {
     loadModels();
 });
 $('llm-url').addEventListener('change', loadModels);
+// Whether a key is saved (never the key itself).
+let clearKey = false;
+function keyInfo(set) {
+    $('llm-key-info').textContent = clearKey ? 'No key will be sent (Apply to save).'
+        : set ? 'A key is saved. Type a new one to replace it, or Clear key.' : 'No key saved: none is sent (fine for a local server).';
+}
+$('llm-key-clear').addEventListener('click', () => { clearKey = true; $('llm-key').value = ''; keyInfo(false); });
+$('llm-key').addEventListener('input', () => { if ($('llm-key').value) { clearKey = false; $('llm-key-info').textContent = 'New key: Apply to save it.'; } });
 BW.onState((s) => {
+    if (s && !clearKey && !$('llm-key').value) keyInfo(s.server.llm.key_set);
     if (llmFilled || !s) return;
     llmFilled = true;
     $('llm-url').value = s.server.llm.endpoint === 'fairlead' ? 'fairlead' : s.server.llm.base_url;   // keep auto-detect on Apply
@@ -275,9 +284,9 @@ BW.onState((s) => {
 $('llmform').addEventListener('submit', async (e) => {
     e.preventDefault();
     const r = await BW.act('POST', '/api/llm/endpoint',
-        { base_url: $('llm-url').value, api_key: $('llm-key').value, model: $('llm-model').value,
+        { base_url: $('llm-url').value, api_key: $('llm-key').value, clear_key: clearKey, model: $('llm-model').value,
           reasoning_effort: $('llm-effort').value, include_thoughts: $('llm-thoughts').checked });
-    if (r) { $('llm-key').value = ''; Notify.show({ variant: 'success', title: `AI model server set to ${r.base_url}` }); }
+    if (r) { $('llm-key').value = ''; clearKey = false; Notify.show({ variant: 'success', title: `AI model server set to ${r.base_url}` }); }
 });
 
 $('logpane').addEventListener('mouseenter', () => { paused = true; });

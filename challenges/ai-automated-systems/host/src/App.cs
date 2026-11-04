@@ -119,8 +119,15 @@ namespace BridgeWarden
                 s["resources"] = meter.Sample();
                 Dictionary<string, object> llmSettings = new Dictionary<string, object>();
                 foreach (KeyValuePair<string, object> kv in Llm.Settings())
+                {
                     if (Array.IndexOf(new[] { "mode", "provider", "model", "local_model", "base_url", "endpoint", "reasoning_effort", "include_thoughts" }, kv.Key) >= 0)
                         llmSettings[kv.Key] = kv.Value;
+                    else if (kv.Key == "api_key")      // only whether one is saved; the key itself never leaves the host
+                    {
+                        string k = Py.StrOr(kv.Value, "").Trim();
+                        llmSettings["key_set"] = k.Length > 0 && k != "local";
+                    }
+                }
                 Dictionary<string, object> agentsLlm = new Dictionary<string, object>(LlmAgent.SCHEDULER.stats);
                 agentsLlm["queue"] = LlmAgent.SCHEDULER.Depth();
                 s["server"] = Py.D("uptime_s", (int)Py.Round(Py.Now() - _started), "operator", Operator, "profile", Profile,
@@ -492,7 +499,9 @@ namespace BridgeWarden
                 throw new HttpError(400, "reasoning_effort must be one of " + string.Join(", ", Llm.REASONING_EFFORTS));
             string key = Py.StrOr(Py.Get(body, "api_key"), "").Trim();
             string model = Py.StrOr(Py.Get(body, "model"), "").Trim();
-            Llm.SetEndpoint(url, key.Length > 0 ? key : null, model, effort, Py.Truthy(Py.Get(body, "include_thoughts")));
+            // A typed key replaces the saved one; clear_key removes it (no key sent); otherwise the saved key stays.
+            string newKey = Py.Truthy(Py.Get(body, "clear_key")) ? "" : key.Length > 0 ? key : null;
+            Llm.SetEndpoint(url, newKey, model, effort, Py.Truthy(Py.Get(body, "include_thoughts")));
             string shown = auto ? "Fairlead (auto-detected, now " + Llm.FairleadUrl() + ")" : url;
             Emit("info", "warden", "AI model server set to " + shown + " (" + (model.Length > 0 ? model : "auto model") + ") by " + Operator);
             return Py.D("ok", true, "base_url", shown, "model", model);

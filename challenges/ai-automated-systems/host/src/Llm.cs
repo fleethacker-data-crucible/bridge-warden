@@ -195,7 +195,8 @@ namespace BridgeWarden
 
         // ---------------------------------------------------------------- Fairlead (the Fleet's model router)
         // When the endpoint is Fairlead (http://127.0.0.1:8776/v1 by default), Bridge Warden follows Fairlead's client
-        // rules: the key comes from Windows Credential Manager (FairleadKey.cs, Fairlead/BridgeWarden; no env fallback),
+        // rules where it can: the key is the one the operator typed in Warden Control (LLM_API_KEY) if any, else the one
+        // Fairlead installed in Windows Credential Manager (FairleadKey.cs, Fairlead/BridgeWarden), else none;
         // every request says who it is (X-Fairlead-Label: BridgeWarden), and a blank model asks for the "local" route,
         // which Fairlead sends to the models on this machine (phoenix-lai). Detected, not configured: a loopback
         // endpoint whose origin answers /__fleethacker/id with "tool":"fairlead". Re-checked every 30 s.
@@ -322,17 +323,27 @@ namespace BridgeWarden
             return new Dictionary<string, string> { { "X-Fairlead-Label", FairleadKey.APP_NAME } };
         }
 
-        // Bearer token to send, or null for none (loopback with a blank / "local" key). Fairlead: its client key from
-        // Credential Manager, or a clear error telling the operator how to install one.
+        // An HTTP error as a sentence the operator can act on: a refused key says where keys go.
+        static string HttpProblem(Dictionary<string, object> s, int status, string detail)
+        {
+            if (status == 401 || status == 403)
+                return "HTTP " + status + ": the server refused the key. Put the right API key in Warden Control (AI Model Server, API key)" +
+                       (IsFairlead(S(s, "base_url")) ? ", for example a Fairlead client key from Fairlead > Clients" : "") + ". " + detail;
+            return "HTTP " + status + " " + detail;
+        }
+
+        // Bearer token to send, or null for none (loopback with a blank / "local" key).
+        // Fairlead: the key the operator typed in Warden Control (LLM_API_KEY) first, else the one Fairlead installed in
+        // Credential Manager (Fairlead/BridgeWarden), else none; a Fairlead that needs a key then answers 401 and
+        // Unauthorized() says where to put one.
         static string Bearer(Dictionary<string, object> s)
         {
+            string key = S(s, "api_key");
             if (IsFairlead(S(s, "base_url")))
             {
-                string fk = FairleadKey.Read();
-                if (fk == null) throw new InvalidOperationException(FairleadKey.MISSING);
-                return fk;
+                if (!KeyBlank(key)) return key.Trim();
+                return FairleadKey.Read();
             }
-            string key = S(s, "api_key");
             if (IsLoopback(S(s, "base_url")) && KeyBlank(key)) return null;
             return key;
         }
@@ -424,7 +435,7 @@ namespace BridgeWarden
                 status = r.status;
                 body = r.ReadToEnd();
             }
-            if (status >= 400) throw new InvalidOperationException("HTTP " + status + " from " + S(s, "base_url") + "/models");
+            if (status >= 400) throw new InvalidOperationException(HttpProblem(s, status, "from " + S(s, "base_url") + "/models"));
             List<string> ids = new List<string>();
             foreach (object m in Py.ListOrEmpty(Py.Get(Py.DictOrEmpty(Json.Parse(body)), "data")))
             {
@@ -484,7 +495,7 @@ namespace BridgeWarden
             {
                 timing["headers_ms"] = ms();
                 if (r.status >= 400)
-                    throw new InvalidOperationException("HTTP " + r.status + ": " + Py.Cut(r.ReadToEnd(), 200));
+                    throw new InvalidOperationException(HttpProblem(s, r.status, Py.Cut(r.ReadToEnd(), 200)));
                 if (!r.content_type.StartsWith("text/event-stream", StringComparison.OrdinalIgnoreCase))
                 {
                     // Server ignored stream: true and sent one JSON body; take it whole.
