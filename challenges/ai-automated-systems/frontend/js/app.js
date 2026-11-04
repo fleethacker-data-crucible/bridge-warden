@@ -50,7 +50,10 @@ const STAGE_SHORT = { authenticate: 'Auth', authority: 'Authz', constraints: 'Cn
 function renderShell(s) {
     const sum = s.summary;
     const ai = s.server.llm;
-    $('sub').textContent = `Multi-agent governance · ${BW.connected ? 'live' : 'DISCONNECTED'} · phase: ${s.cop.phase} · AI text: ${ai.mode}${ai.mode === 'live' ? ` (${ai.provider}/${ai.model})` : ''}`;
+    // Through Fairlead the model may be in the cloud or local, so name Fairlead and the route instead of "local".
+    const viaFairlead = ai.endpoint === 'fairlead' ? ` via Fairlead (${ai.local_model || 'local route'})` : '';
+    $('sub').textContent = `Multi-agent governance · ${BW.connected ? 'live' : 'DISCONNECTED'} · phase: ${s.cop.phase} · AI text: ${ai.mode}${ai.mode === 'live' ? ` (${ai.provider}/${ai.model})` : ''}${viaFairlead}`;
+    $('chat-model').textContent = `${viaFairlead ? 'AI model' + viaFairlead : 'local model'} · proposes, never acts`;
     $('k-sim').textContent = fmtSim(s.cop.sim_time);
     const sp = (s.presenter && s.presenter.speed) || 1;
     $('k-speed').innerHTML = `<button class="btn ${sp > 1 ? 'warn' : ''}" style="height:24px;min-width:56px" title="Sim speed: click for ${sp % 5 + 1}x" onclick="BW.act('POST','/api/presenter/speed',null,'Sim speed ${sp % 5 + 1}x')">${sp}x</button>`;
