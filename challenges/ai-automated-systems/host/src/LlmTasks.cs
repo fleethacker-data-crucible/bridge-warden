@@ -72,7 +72,7 @@ namespace BridgeWarden
                 return S(i, "loser_agent") + " wants " + S(i, "loser_value") + " but the resource is held by the operator.";
             return S(i, "winner_agent") + " (" + S(i, "winner_objective").ToLowerInvariant() + ") wants " + S(i, "winner_value") + "; " +
                    S(i, "loser_agent") + " (" + S(i, "loser_objective").ToLowerInvariant() + ") wants " + S(i, "loser_value") + ". " +
-                   "Priority " + S(i, "winner_priority") + " beats " + S(i, "loser_priority") + ".";
+                   "Rank " + S(i, "winner_priority") + " beats " + S(i, "loser_priority") + ".";
         }
 
         public static string EscalationFallback(Dictionary<string, object> i)

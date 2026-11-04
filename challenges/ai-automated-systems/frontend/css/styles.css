@@ -403,3 +403,13 @@ button { font-family: var(--font-ui); }
 .llm-warm.loading { color: var(--badge-yellow); }
 .llm-warm.ready { color: var(--badge-green); }
 .llm-warm.failed { color: var(--badge-red); }
+
+/* MORDECAI rank roster (Agents page) and condition banner. */
+.condition-bar { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong); background: var(--bg-inset); color: var(--text-muted); font-size: 13.5px; }
+.condition-bar b { color: var(--text); letter-spacing: .06em; }
+.condition-bar.general_quarters { border-color: var(--red); }
+.condition-bar.general_quarters b { color: var(--badge-red); }
+.rank-eff { font: 700 16px var(--font-mono); color: var(--text); margin-right: 6px; }
+.rank-parts { font: 12px var(--font-mono); color: var(--text-muted); white-space: nowrap; }
+.rank-parts .promo { color: var(--badge-yellow); }

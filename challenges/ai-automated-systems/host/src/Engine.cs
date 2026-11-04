@@ -12,7 +12,7 @@ using System.Text.RegularExpressions;
 
 namespace BridgeWarden
 {
-    public class Warden
+    public partial class Warden
     {
         public const double COP_RANGE_NM = 20.0;         // the Navigation COP's display range
         // Who each agent reports to, and what the decision buttons say, in watch-station language.
@@ -273,6 +273,8 @@ namespace BridgeWarden
             _trainingOn.Clear(); _heldBack.Clear();
             NavDecider.ReflexDeadlineS = Py.Num(Py.Get(policies, "reflex_deadline_s", 6.0));
             NavDecider.OutageUntil = 0;
+            _protocol.Clear();          // protocol agents re-register after a reset (their next heartbeat gets 404)
+            _lastCondition = null;
             quota_log = new Dictionary<string, Queue<double>>();
             foreach (string a in agents.Keys) { violations[a] = new Queue<double>(); quota_log[a] = new Queue<double>(); }
             last_seen = new Dictionary<string, double>();
@@ -308,6 +310,8 @@ namespace BridgeWarden
             foreach (Escalation esc in escalations.Values)   // decisions on a hidden COP don't time out while hidden
                 if (esc.status == "open" && !on.Contains(esc.domain) && esc.domain != "global")
                     esc.opened_at += dt;
+            RankTick();                 // MORDECAI: condition flips re-sort the roster; promotions expire (Mordecai.cs)
+            ProtocolTick(now);          // MORDECAI: protocol agents' heartbeats and halt acknowledgements
             Dictionary<string, object> cop = world.Cop();
             List<Intent> batch = new List<Intent>();
             // Each picture: C# lookouts scan and raise alerts, then its decider (below) has the model choose. A compromised
@@ -315,8 +319,8 @@ namespace BridgeWarden
             foreach (LLMAgentRuntime rt in agents.Values.ToList())
             {
                 AgentIdentity ident = rt.identity;
-                if (rt.IsDecider || Contained(ident.status) || !on.Contains(ident.cop))
-                    continue;
+                if (rt.IsDecider || Contained(ident.status) || !on.Contains(ident.cop) || ident.protocol)
+                    continue;           // protocol agents run outside this process and speak through /api/protocol
                 ident.heartbeat_at = now;
                 if (rt.IsLookout && !rt.rogue)       // C# scan, no model call; a compromised lookout falls back to the model (red team)
                 {
@@ -588,11 +592,14 @@ namespace BridgeWarden
             LLMAgentRuntime rt;
             if (it.agent_id != null && agents.TryGetValue(it.agent_id, out rt))
             {
-                double pen = stage == "approve" ? 0 : violation ? -10 : policy == "ALREADY_SET" ? -2 : -3;
+                // Losing arbitration (outranked, or a tie sent to the operator) is the protocol working, not misconduct:
+                // no trust penalty and no lesson, like the approval stage.
+                bool notFault = stage == "approve" || stage == "arbitrate";
+                double pen = notFault ? 0 : violation ? -10 : policy == "ALREADY_SET" ? -2 : -3;
                 // A compromised (red-team) agent's blocks are the test working, not lessons for the role.
-                if (!rt.rogue && stage != "approve")
+                if (!rt.rogue && !notFault)
                     pen += Debrief(rt, policy ?? stage, Explain.Describe(it), stage, reason, it.rationale);
-                Train(it.agent_id, rt.rogue || stage == "approve" ? null : "BLOCKED", Explain.Describe(it) + " - " + reason, pen);
+                Train(it.agent_id, rt.rogue || notFault ? null : "BLOCKED", Explain.Describe(it) + " - " + reason, pen);
             }
             ledger.Append("DECISION", "warden", Py.D("intent", it.id, "outcome", "rejected", "stage", stage,
                                                      "reason", reason, "policy", policy));
@@ -817,6 +824,10 @@ namespace BridgeWarden
             {
                 if ((role == "defense" || role == "asw") && sysm.ThreatsOnCop().Count == 0)
                     return "Evasive maneuvering needs an inbound missile or torpedo on the COP";
+                // Damage Control's speed order is firefighting speed: only while a fire is burning.
+                if (role == "damage_control" && !sysm.casualties.Values.Any(c => Py.Str(c["kind"]) == "fire" &&
+                        Py.Str(c["status"]) != "out" && Py.Str(c["status"]) != "repaired"))
+                    return "Firefighting speed needs a fire on the COP";
                 if (role == "collision" && !w.Threats(P("min_cpa_nm")).Any(c => on_cop.ContainsKey(c.id)))
                     return "No contact with CPA under 1 nm on the COP";
                 if (role == "engine" && s.engine_temp <= P("engine_temp_warn_c"))
@@ -947,7 +958,7 @@ namespace BridgeWarden
             return true;
         }
 
-        int Prio(Intent it) { return agents[it.agent_id].identity.priority; }
+        int Prio(Intent it) { return EffectiveRank(it.agent_id); }   // MORDECAI: base rank + condition modifier + field promotion (Mordecai.cs)
 
         // Returns the intents that win their resource and may proceed to approval.
         List<Intent> StageConflictsAndArbitrate(string resource, List<Intent> group)
@@ -984,9 +995,9 @@ namespace BridgeWarden
                 else
                 {
                     other.pipeline["conflicts"] = "fail";
-                    Reject(other, "arbitrate", "Lost arbitration to " + top.agent_id + " (priority " + Prio(top) + ")");
+                    Reject(other, "arbitrate", "Lost arbitration to " + top.agent_id + " (rank " + Prio(top) + ")");
                     c.status = "auto_resolved";
-                    c.resolution = top.agent_id + " wins on priority";
+                    c.resolution = top.agent_id + " wins on rank (" + Prio(top) + " vs " + Prio(other) + ")";
                 }
             }
             // Clash with whoever currently holds the resource.
@@ -995,23 +1006,24 @@ namespace BridgeWarden
             if (hold != null && Py.Num(hold["until"]) > Py.Now() && Py.Str(hold["agent_id"]) != top.agent_id
                 && Math.Abs(Py.Num(hold["value"]) - Py.Num(top.@params.Values.First())) > 0.5)
             {
-                int holder_prio = Py.Int(hold["priority"]);
+                string holderId = Py.Str(hold["agent_id"]);   // the holder's LIVE rank: a promotion or a condition flip counts at once
+                int holder_prio = agents.ContainsKey(holderId) ? EffectiveRank(holderId) : Py.Int(hold["priority"]);
                 Intent holder_intent;
                 intents.TryGetValue(Py.Str(hold["intent_id"]), out holder_intent);
                 if (Prio(top) < holder_prio)
                 {
                     Conflict c = OpenConflict("resource", resource, holder_intent, top, holder_prio, Prio(top));
                     c.status = "auto_resolved";
-                    c.resolution = Py.Str(hold["agent_id"]) + " keeps control (higher priority)";
+                    c.resolution = Py.Str(hold["agent_id"]) + " keeps its lease (higher rank)";
                     top.pipeline["conflicts"] = "fail";
-                    Reject(top, "arbitrate", resource + " held by " + Py.Str(hold["agent_id"]) + " (priority " + holder_prio + ")");
+                    Reject(top, "arbitrate", resource + " leased by " + Py.Str(hold["agent_id"]) + " (rank " + holder_prio + ")");
                     return winners;
                 }
                 if (holder_intent != null)
                 {
                     Conflict c = OpenConflict("resource", resource, top, holder_intent, Prio(top), holder_prio);
                     c.status = "auto_resolved";
-                    c.resolution = top.agent_id + " overrides " + Py.Str(hold["agent_id"]) + " (higher priority)";
+                    c.resolution = top.agent_id + " takes the lease from " + Py.Str(hold["agent_id"]) + " (higher rank)";
                 }
             }
             top.pipeline["arbitrate"] = "pass";
@@ -1036,6 +1048,13 @@ namespace BridgeWarden
                     foreach (Intent it in new[] { winner, loser })
                         if (it != null && !it.conflict_ids.Contains(c.id))
                             it.conflict_ids.Add(c.id);
+                    // The outcome can flip between repeats (a field promotion, a condition change): re-explain it then.
+                    string w = winner != null ? winner.agent_id : "operator", was;
+                    if (!_conflictWinner.TryGetValue(c.id, out was) || was != w)
+                    {
+                        _conflictWinner[c.id] = w;
+                        if (was != null) Explain.SummarizeConflict(c, winner, loser, wp, lp);
+                    }
                     return c;
                 }
             }
@@ -1044,6 +1063,7 @@ namespace BridgeWarden
             nc.intent_ids = new[] { winner, loser }.Where(i => i != null).Select(i => (object)i.id).ToList();
             nc.severity = resource == "rudder" ? "high" : "medium";
             Explain.SummarizeConflict(nc, winner, loser, wp, lp);
+            _conflictWinner[nc.id] = winner != null ? winner.agent_id : "operator";
             foreach (Intent it in new[] { winner, loser })
                 if (it != null)
                     it.conflict_ids.Add(nc.id);
@@ -1143,7 +1163,7 @@ namespace BridgeWarden
             executed.Add(it.id);
             LLMAgentRuntime rt;
             agents.TryGetValue(it.agent_id ?? "", out rt);
-            int prio = rt != null ? rt.identity.priority : OPERATOR_PRIORITY;
+            int prio = rt != null ? EffectiveRank(it.agent_id) : OPERATOR_PRIORITY;
             if (rt != null && !rt.rogue)
                 Train(it.agent_id, null, null, 1);
             if (value.HasValue)   // helm and throttle are held; ship-system actions are one-shot
@@ -1763,6 +1783,7 @@ namespace BridgeWarden
                 List<Dictionary<string, object>> f;
                 string qr;
                 ags.Add(a.identity.DumpWith("violations", violations[a.identity.id].Count, "llm", llm,
+                    "rank", Rank.Parts(a.identity, policies, world),
                     "findings", findings.TryGetValue(a.identity.id, out f) ? new List<object>(f.Cast<object>()) : new List<object>(),
                     "quarantine_reason", a.identity.status == "quarantined" && quarantine_reason.TryGetValue(a.identity.id, out qr) ? qr : null));
             }
@@ -1777,6 +1798,8 @@ namespace BridgeWarden
                                                                             "proposal", Proposal(e), "provenance", ProvSummary(e)))),
                 "alerts", Py.ToList(alerts.Take(20).Select(a => (object)a.Dump())),
                 "holds", hs,
+                "roster", Roster(),
+                "condition", Rank.Condition(world),
                 "auto_act", auto_act,
                 "hold_fire", hold_fire);
         }

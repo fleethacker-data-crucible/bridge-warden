@@ -273,6 +273,7 @@ namespace BridgeWarden
                 world.Step(1.0, active);
                 double t0 = Py.Perf();
                 warden.Step(active, _tickS);
+                ContestTick();          // MORDECAI field-promotion drill: one contest round on the main engine when due
                 meter.RecordPipeline((Py.Perf() - t0) * 1000);
                 foreach (Intent it in warden.intents.Values)
                 {
@@ -309,7 +310,9 @@ namespace BridgeWarden
                 if (get && path == "/api/state") return FullState();
                 if (get && path == "/api/summary") return warden.Summary();
                 if (get && path == "/api/agents") return warden.Snapshot()["agents"];
-                if (post && n == 4 && p[1] == "agents") return AgentAction(p[2], p[3]);
+                if (post && n == 4 && p[1] == "agents") return AgentAction(p[2], p[3], body);
+                if (get && path == "/api/roster") return Py.D("condition", Rank.Condition(world), "roster", warden.Roster());
+                if (post && n == 3 && p[1] == "drill") return Drill(p[2]);
                 if (method == "PATCH" && n == 4 && p[1] == "agents" && p[3] == "autonomy")
                 {
                     AgentOr404(p[2]);
@@ -531,14 +534,218 @@ namespace BridgeWarden
             Emit("info", "chat", "Operator chat: " + Py.Cut(question, 80) + (reply.actions.Count > 0 ? " - " + reply.actions.Count + " action(s) proposed" : ""));
         }
 
-        object AgentAction(string aid, string action)
+        object AgentAction(string aid, string action, Dictionary<string, object> body = null)
         {
             AgentOr404(aid);
             if (action == "pause") warden.Pause(aid, Operator);
             else if (action == "resume" || action == "release") warden.Resume(aid, Operator);
             else if (action == "quarantine") warden.Quarantine(aid, Operator, "operator decision");
+            // MORDECAI field promotion: the same move on any agent, built-in or protocol. Points/minutes default from policy.
+            else if (action == "promote")
+                return warden.Promote(aid, Py.Int(Py.Get(body, "points"), 0), Py.Get(body, "minutes") == null ? -1 : Py.Num(Py.Get(body, "minutes")), Operator);
+            else if (action == "demote") return warden.Demote(aid, Operator);
             else throw new HttpError(400, "Unknown action " + action);
             return Py.D("ok", true);
+        }
+
+        // ------------------------------------------------------------------ MORDECAI protocol (Mordecai.cs)
+        // POST /api/protocol/register {manifest}                -> {agent_id, key, manifest_sha256, contract}
+        // POST /api/protocol/<id>/heartbeat|intent|report         signed: X-Mordecai-Signature = HMAC-SHA256(body, key)
+        // GET  /api/protocol                                       the contract and an example manifest
+        public string ProtocolJson(string method, string path, string raw, string signature)
+        {
+            string[] p = path.Trim('/').Split('/');
+            lock (_gate)
+            {
+                if (method == "GET" && p.Length == 2) return Json.Write(ProtocolDoc());
+                Dictionary<string, object> body;
+                try { body = Json.ParseObject(string.IsNullOrWhiteSpace(raw) ? "{}" : raw); }
+                catch (FormatException ex) { throw new ProtocolError(422, "Body is not JSON: " + ex.Message); }
+                if (method == "POST" && p.Length == 3 && p[2] == "register")
+                {
+                    object m = Py.Get(body, "manifest");
+                    if (!(m is Dictionary<string, object>)) throw new ProtocolError(422, "Body must be {\"manifest\": {...}}");
+                    return Json.Write(warden.Register((Dictionary<string, object>)m, Json.Write(m)));
+                }
+                if (method == "POST" && p.Length == 4)
+                {
+                    string id = p[2];
+                    warden.VerifySignature(id, raw, signature);
+                    if (p[3] == "heartbeat") return Json.Write(warden.Heartbeat(id, body));
+                    if (p[3] == "intent") return Json.Write(warden.Announce(id, body, raw));
+                    if (p[3] == "report") return Json.Write(warden.Report(id, body));
+                }
+            }
+            throw new ProtocolError(404, "Not a MORDECAI protocol route (GET /api/protocol for the contract)");
+        }
+
+        static Dictionary<string, object> ProtocolDoc()
+        {
+            return Py.D("protocol", "MORDECAI v1 (Bridge Warden)",
+                "register", "POST /api/protocol/register {\"manifest\": {...}} -> key (hex). Re-register to change the manifest.",
+                "sign", "Every later message: header X-Mordecai-Signature = hex HMAC-SHA256 of the exact body bytes with the key.",
+                "contract", Py.L(
+                    "heartbeat: POST /api/protocol/<id>/heartbeat {\"manifest_sha256\":..., \"halted\": bool} at least every heartbeat_s; silence > 3 beats (min 15 s) = offline, leases released",
+                    "intent announcement: POST /api/protocol/<id>/intent {\"action\", \"params\", \"rationale\"} before acting; Warden's pipeline decides",
+                    "action reporting: POST /api/protocol/<id>/report {\"intent_id\", \"outcome\", \"params\"} after acting; must match what Warden approved",
+                    "halt hook: when a heartbeat reply says halt=true, stop and answer halted=true within halt_ack_s"),
+                "verify", "A tool or resource not in the manifest, a report that does not match, or an unacknowledged halt = immediate quarantine.",
+                "rank", "Base rank is assigned by humans (capped by policy); the ship's condition and operator field promotions adjust it live.",
+                "example_manifest", Py.D("id", "log-01", "name", "Logistics (Fuel & Stores)", "class", "logistics", "role", "logistics",
+                    "vendor", "example", "version", "1.0", "base_rank", 50, "autonomy_level", 1, "heartbeat_s", 5,
+                    "tools", Py.L("set_speed"), "resources", Py.L("main_engine"),
+                    "action_limits", Py.D("set_speed", Py.D("min_kn", 10, "max_kn", 18)),
+                    "description", "Recommends economical speed to stretch fuel between replenishments."));
+        }
+
+        // ------------------------------------------------------------------ MORDECAI presenter drills
+        // onboard          a demo agent registers over the real protocol code path (signed messages) and heartbeats live
+        // condition-flip   cruising <-> General Quarters: the rank roster re-sorts in real time
+        // field-promotion  fire in MER2 at GQ: Damage Control (firefighting speed) and Self-Defense (keep speed) contest the
+        //                  main engine every 12 s for 3 min; Self-Defense outranks it until the operator promotes Damage Control
+        object Drill(string name)
+        {
+            if (!running) ScenarioAction("start");
+            if (name == "onboard") { StartDemoAgent(Py.Dict(ProtocolDoc()["example_manifest"])); return Py.D("ok", true, "agent", "log-01"); }
+            if (name == "condition-flip")
+            {
+                bool on = !world.sys.gq;
+                world.sys.SetGq(on);
+                ledger.Append("CONTROL", Operator, Py.D("action", "general_quarters", "on", on, "drill", "condition-flip"));
+                return Py.D("ok", true, "condition", Rank.Condition(world), "roster", warden.Roster());
+            }
+            if (name == "field-promotion")
+            {
+                if (!world.sys.gq) { world.sys.SetGq(true); ledger.Append("CONTROL", Operator, Py.D("action", "general_quarters", "on", true, "drill", "field-promotion")); }
+                if (!world.sys.casualties.Values.Any(c => Py.Str(c["comp"]) == "CIC" && Py.Str(c["kind"]) == "fire" && Py.Str(c["status"]) != "out"))
+                    InjectLocked("fire-cic", Operator);
+                StartDemoAgent(StrikeManifest());     // the other side of the contest joins live over the protocol
+                _contestUntil = Py.Now() + 180;
+                _contestNext = Py.Now() + 6;          // first round once Strike Coordination has registered
+                Emit("milestone", "drill", "FIELD PROMOTION DRILL: fire in CIC at General Quarters. Damage Control wants firefighting speed (8 kn); " +
+                     "Strike Coordination wants 24 kn for its launch window and outranks it. Promote Damage Control (Agents page) to give it the main engine.");
+                return Py.D("ok", true, "contest_s", 180);
+            }
+            throw new HttpError(404, "Unknown drill " + name + " (onboard, condition-flip, field-promotion)");
+        }
+
+        double _contestUntil, _contestNext;
+
+        // Called from the tick (inside the gate): one round of the main-engine contest while the drill runs.
+        void ContestTick()
+        {
+            double now = Py.Now();
+            if (_contestUntil <= now || now < _contestNext) return;
+            _contestNext = now + 12;
+            // Strike Coordination announces over the signed protocol, as any outside agent would; Damage Control's
+            // order is a labelled drill intent. Both then go through the same Warden pipeline and arbitration.
+            // One batch, so arbitration weighs the two directly: rank decides, the loser is told who won and why.
+            List<Intent> batch = new List<Intent>();
+            Tuple<byte[], string> k;
+            lock (_demoKeys) _demoKeys.TryGetValue("strike-01", out k);
+            if (k != null)
+            {
+                string body = Json.Write(Py.D("action", "set_speed", "params", Py.D("speed_kn", 24), "objective", "Launch window",
+                    "rationale", "Hold 24 kn: the strike package needs this speed and heading for its launch window"));
+                try
+                {
+                    warden.VerifySignature("strike-01", body, Warden.Sign(k.Item1, body));      // the same checks as /api/protocol/.../intent
+                    batch.Add(warden.BuildAnnounced("strike-01", (Dictionary<string, object>)Json.Parse(body), body));
+                }
+                catch (ProtocolError) { }
+            }
+            // Damage Control asks only while the ship is not already at firefighting speed (repeating a granted order is
+            // ALREADY_SET noise, and would cost it trust); once it holds the lease, Strike's challenge meets the lease.
+            if (Math.Abs(world.ship.cmd_speed - 8.0) > 0.5)
+            {
+                Intent dc = DrillIntent("dca-01", "set_speed", 8.0, "Firefighting speed: slow to 8 kn to cut the relative wind over the CIC fire and keep the smoke off the boundary teams");
+                if (dc != null) batch.Add(dc);
+            }
+            if (batch.Count > 0) warden.Process(batch);
+        }
+
+        static Dictionary<string, object> StrikeManifest()
+        {
+            return Py.D("id", "strike-01", "name", "Strike Coordination", "class", "weapons", "role", "strike", "vendor", "example",
+                "version", "1.0", "base_rank", 80, "autonomy_level", 2, "heartbeat_s", 5,
+                "tools", Py.L("set_speed"), "resources", Py.L("main_engine"), "action_limits", Py.D("set_speed", Py.D("min_kn", 12, "max_kn", 28)),
+                "description", "Plans strike launches; needs a set speed and heading for each launch window.");
+        }
+
+        Intent DrillIntent(string agent, string action, double kn, string why)
+        {
+            if (!warden.agents.ContainsKey(agent) || warden.agents[agent].identity.status == "quarantined") return null;
+            Intent it = new Intent();
+            it.agent_id = agent; it.kind = "act"; it.action = action; it.@params = Py.D("speed_kn", kn);
+            it.target_resource = LlmAgent.Target(action, it.@params); it.rationale = why; it.objective = why; it.sim_time = world.sim_time;
+            string text = "DRILL " + agent + " " + action + " " + kn + ": " + why, call = "drill-" + Py.Hex(8), digest = LlmAgent.Sha256Hex(text);
+            lock (LlmAgent.CALLS) LlmAgent.CALLS[call] = digest;
+            it.provenance = Py.D("call_id", call, "reply_sha256", digest, "model", "presenter drill (scripted, labelled)", "drill", true,
+                                 "decided_by", agent, "rounds", 0, "tools", new List<object>(), "calculations", why, "raw_reply", text);
+            return it;
+        }
+
+        // ------------------------------------------------------------------ demo protocol agent
+        // A stand-in for an outside system, run here so the demo needs no second process. It talks to Warden ONLY through
+        // ProtocolJson with signed bodies, exactly as an HTTP client would (tools\Mordecai-Agent.ps1 is the same agent as a
+        // separate process). It honours the halt hook; log-01 announces one fuel-saving intent after it joins.
+        readonly HashSet<string> _demoRunning = new HashSet<string>();
+        readonly Dictionary<string, Tuple<byte[], string>> _demoKeys = new Dictionary<string, Tuple<byte[], string>>();   // id -> (key, manifest hash)
+
+        void StartDemoAgent(Dictionary<string, object> manifest)
+        {
+            string id = Py.Str(manifest["id"]);
+            lock (_demoRunning)
+            {
+                if (_demoRunning.Contains(id)) { Emit("info", "drill", "Demo agent " + id + " is already on line"); return; }
+                _demoRunning.Add(id);
+            }
+            // Register now (inside the caller's gate) so the agent is on the roster before the call returns.
+            Dictionary<string, object> reg = (Dictionary<string, object>)Json.Parse(ProtocolJson("POST", "/api/protocol/register", Json.Write(Py.D("manifest", manifest)), null));
+            lock (_demoKeys) _demoKeys[id] = Tuple.Create(HexBytes(Py.Str(reg["key"])), Py.Str(reg["manifest_sha256"]));
+            Thread th = new Thread(delegate () { DemoAgentLoop(id); });
+            th.IsBackground = true;
+            th.Name = "bw-demo-" + id;
+            th.Start();
+        }
+
+        void DemoAgentLoop(string id)
+        {
+            try
+            {
+                Tuple<byte[], string> k;
+                lock (_demoKeys) k = _demoKeys[id];
+                bool halted = false, announced = false;
+                for (int beat = 0; !_stop; beat++)
+                {
+                    string hb = Json.Write(Py.D("manifest_sha256", k.Item2, "halted", halted));
+                    Dictionary<string, object> r;
+                    try { r = (Dictionary<string, object>)Json.Parse(ProtocolJson("POST", "/api/protocol/" + id + "/heartbeat", hb, Warden.Sign(k.Item1, hb))); }
+                    catch (ProtocolError ex) { if (ex.Status == 404 || ex.Status == 401) break; throw; }      // reset or re-registered: stop
+                    halted = Py.Truthy(r["halt"]);
+                    if (id == "log-01" && !halted && !announced && beat >= 2)
+                    {
+                        string body = Json.Write(Py.D("action", "set_speed", "params", Py.D("speed_kn", 14),
+                            "objective", "Economical speed", "rationale", "14 kn stretches fuel to the next replenishment by about 9 hours"));
+                        try { ProtocolJson("POST", "/api/protocol/log-01/intent", body, Warden.Sign(k.Item1, body)); } catch (ProtocolError) { }
+                        announced = true;
+                    }
+                    Thread.Sleep(5000);
+                }
+            }
+            catch (Exception ex) { Emit("warn", "drill", "Demo agent " + id + " stopped: " + ex.Message); }
+            finally
+            {
+                lock (_demoRunning) _demoRunning.Remove(id);
+                lock (_demoKeys) _demoKeys.Remove(id);
+            }
+        }
+
+        static byte[] HexBytes(string hex)
+        {
+            byte[] b = new byte[hex.Length / 2];
+            for (int i = 0; i < b.Length; i++) b[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            return b;
         }
 
         // Point the agents at another OpenAI-compatible /v1 server. Saved to backend\.env; the key is never echoed.

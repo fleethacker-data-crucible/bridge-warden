@@ -61,6 +61,17 @@ namespace BridgeWarden
         // its parent decider and carries out the option the decider picks). NavCell.cs.
         public string tier = "sub";
         public string parent;
+        // MORDECAI rank (Mordecai.cs): `priority` is the human-assigned base rank; agent_class picks the per-condition
+        // modifier from policies.json "rank"; a field promotion adds points until it expires.
+        public string agent_class = "";
+        public int promotion = 0;
+        public double promotion_until = 0;
+        public string promoted_by = "";
+        // Protocol agents (registered over /api/protocol with a signed manifest, outside this process): what they declared
+        // they will touch, and the contract state Warden verifies against.
+        public bool protocol = false;
+        public List<object> resources = new List<object>();
+        public double heartbeat_s = 5;
 
         // AgentIdentity(**a) from config\agents.json
         public static AgentIdentity FromDict(Dictionary<string, object> a)
@@ -84,6 +95,9 @@ namespace BridgeWarden
             i.cop = Py.StrOr(Py.Get(a, "cop"), i.cop);
             i.tier = Py.StrOr(Py.Get(a, "tier"), i.tier);
             i.parent = Py.Get(a, "parent") as string;
+            i.agent_class = Py.StrOr(Py.Get(a, "class"), Rank.ClassOf(i.role));
+            i.resources = Py.ListOrEmpty(Py.Get(a, "resources"));
+            i.heartbeat_s = Py.Num(Py.Get(a, "heartbeat_s"), i.heartbeat_s);
             return i;
         }
 

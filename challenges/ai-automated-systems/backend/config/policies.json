@@ -13,6 +13,23 @@
   "oscillation_flips": 3,
   "safe_speed_kn": 6,
   "require_llm_provenance": true,
+  "rank": {
+    "_doc": "MORDECAI rank (host/src/Mordecai.cs): effective = base rank (agents.json priority, human-assigned) + conditions[ship condition][agent class] + field promotion. Cruising is all 0: base rank alone decides.",
+    "promotion_points": 25,
+    "promotion_minutes": 10,
+    "conditions": {
+      "cruising": {},
+      "general_quarters": { "weapons": 15, "defense": 10, "damage_control": 5, "sensors": 5, "engineering": 0, "command": 0, "navigation": -10, "logistics": -15, "support": -5 }
+    }
+  },
+  "protocol": {
+    "_doc": "MORDECAI protocol agents (/api/protocol): registered manifests, signed messages, four-part contract.",
+    "heartbeat_timeout_s": 15,
+    "halt_ack_s": 12,
+    "quarantine_on_manifest_mismatch": true,
+    "max_base_rank": 80,
+    "max_agents": 32
+  },
   "system_check_interval_s": 120,
   "system_check_timeout_s": 120,
   "system_check_retry_s": 30,

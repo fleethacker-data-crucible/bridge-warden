@@ -145,6 +145,8 @@ namespace BridgeWarden
             { ExplainStream(res, seg[2]); return; }
             if (req.HttpMethod == "POST" && path == "/api/chat/stream")
             { ChatStream(req, res); return; }
+            if (path == "/api/protocol" || path.StartsWith("/api/protocol/", StringComparison.Ordinal))
+            { Protocol(req, res, path); return; }
 
             Dictionary<string, string> query = new Dictionary<string, string>();
             foreach (string k in req.QueryString.AllKeys) if (k != null) query[k] = req.QueryString[k];
@@ -165,6 +167,23 @@ namespace BridgeWarden
             catch (Exception ex)
             {
                 Log("API " + req.HttpMethod + " " + path + " error: " + ex);
+                SendJson(res, 500, Json.Write(Py.D("detail", ex.Message)));
+            }
+        }
+
+        // MORDECAI protocol (App.ProtocolJson / Mordecai.cs). The raw body is kept: the signature covers its exact bytes.
+        void Protocol(HttpListenerRequest req, HttpListenerResponse res, string path)
+        {
+            string raw = "";
+            if (req.HasEntityBody)
+                using (StreamReader r = new StreamReader(req.InputStream, Encoding.UTF8)) raw = r.ReadToEnd();
+            if (raw.Length > 64 * 1024) { SendJson(res, 413, Json.Write(Py.D("detail", "Body too large"))); return; }
+            try { SendJson(res, 200, _app.ProtocolJson(req.HttpMethod, path, raw, req.Headers["X-Mordecai-Signature"])); }
+            catch (ProtocolError ex) { SendJson(res, ex.Status, Json.Write(Py.D("detail", ex.Message))); }
+            catch (KeyNotFoundException ex) { SendJson(res, 404, Json.Write(Py.D("detail", ex.Message))); }
+            catch (Exception ex)
+            {
+                Log("protocol " + path + " error: " + ex);
                 SendJson(res, 500, Json.Write(Py.D("detail", ex.Message)));
             }
         }

@@ -42,6 +42,8 @@ namespace BridgeWarden
             "  ACTION: resume_agent <agent_id>       let a paused agent run again\n" +
             "  ACTION: quarantine_agent <agent_id>   isolate a misbehaving agent (stronger than pause)\n" +
             "  ACTION: set_autonomy <agent_id> <0-3> 0 advise, 1 recommend, 2 act with approval, 3 act\n" +
+            "  ACTION: promote_agent <agent_id>      field promotion: raise its rank for a few minutes so it wins contested actuators\n" +
+            "  ACTION: demote_agent <agent_id>       revoke a field promotion\n" +
             "  ACTION: rollback_last [agent_id]      undo the last executed order (of that agent)\n" +
             "  ACTION: safe_stop                     pause all agents, hold course at safe speed\n" +
             "  ACTION: resume_all                    resume all agents after a safe stop\n" +
@@ -122,7 +124,7 @@ namespace BridgeWarden
         // verb plus the agent whose id or LONGEST name appears in the message ("Damage Control Officer" beats "Damage
         // Control"). Local models mix up similar agent names; this keeps the card on the agent the operator named.
         // Commands only (the message starts with the verb), so "why did it resume?" never makes a card.
-        static readonly Regex DIRECT = new Regex(@"^\s*(?:(?:please|ok|okay|now)[\s,]+)?(?:(?:can|could|would|will) you\s+)?(?:go ahead and\s+)?(pause|resume|release|quarantine|isolate)\b",
+        static readonly Regex DIRECT = new Regex(@"^\s*(?:(?:please|ok|okay|now)[\s,]+)?(?:(?:can|could|would|will) you\s+)?(?:go ahead and\s+)?(pause|resume|release|quarantine|isolate|promote)\b",
                                                  RegexOptions.IgnoreCase);
 
         public static Proposal Direct(string question, IDictionary<string, string> agents)
@@ -140,7 +142,7 @@ namespace BridgeWarden
             }
             if (id == null) return null;
             string w = m.Groups[1].Value.ToLowerInvariant();
-            string verb = w == "pause" ? "pause_agent" : w == "quarantine" || w == "isolate" ? "quarantine_agent" : "resume_agent";
+            string verb = w == "pause" ? "pause_agent" : w == "quarantine" || w == "isolate" ? "quarantine_agent" : w == "promote" ? "promote_agent" : "resume_agent";
             return Build(verb + " " + id, agents);
         }
 
@@ -190,6 +192,10 @@ namespace BridgeWarden
                     return isAgent(a1) ? P("Resume " + AgentLabel(a1, agents), "POST", "/api/agents/" + a1 + "/resume", null) : null;
                 case "quarantine_agent":
                     return isAgent(a1) ? P("Quarantine " + AgentLabel(a1, agents), "POST", "/api/agents/" + a1 + "/quarantine", null) : null;
+                case "promote_agent":
+                    return isAgent(a1) ? P("Field-promote " + AgentLabel(a1, agents) + " (higher rank for a few minutes)", "POST", "/api/agents/" + a1 + "/promote", Py.D()) : null;
+                case "demote_agent":
+                    return isAgent(a1) ? P("Revoke the field promotion of " + AgentLabel(a1, agents), "POST", "/api/agents/" + a1 + "/demote", Py.D()) : null;
                 case "set_autonomy":
                 {
                     int lvl;

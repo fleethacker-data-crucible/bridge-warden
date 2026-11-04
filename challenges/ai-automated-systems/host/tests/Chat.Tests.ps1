@@ -40,7 +40,9 @@ Describe 'Chat proposals (allow-list only, never executed by chat)' {
             @('resume_all', 'POST', '/api/control/resume-all'),
             @('cease_fire', 'POST', '/api/control/cease-fire'),
             @('general_quarters on', 'POST', '/api/control/gq/on'),
-            @('auto_act off', 'POST', '/api/control/auto-act/off'))
+            @('auto_act off', 'POST', '/api/control/auto-act/off'),
+            @('promote_agent wx-01', 'POST', '/api/agents/wx-01/promote'),
+            @('demote_agent wx-01', 'POST', '/api/agents/wx-01/demote'))
         foreach ($c in $cases) {
             $p = [BridgeWarden.Chat]::Build($c[0], $script:Agents)
             $p | Should -Not -BeNullOrEmpty -Because $c[0]
@@ -79,6 +81,7 @@ Describe 'Direct operator commands (no model needed)' {
         [BridgeWarden.Chat]::Direct('Pause the Damage Control Officer for now.', $script:Agents).url | Should -Be '/api/agents/dco-01/pause'
         [BridgeWarden.Chat]::Direct('please pause damage control', $script:Agents).url | Should -Be '/api/agents/dca-01/pause'
         [BridgeWarden.Chat]::Direct('can you quarantine wx-01', $script:Agents).url | Should -Be '/api/agents/wx-01/quarantine'
+        [BridgeWarden.Chat]::Direct('Promote the Damage Control Officer', $script:Agents).url | Should -Be '/api/agents/dco-01/promote'
     }
 
     It 'ignores questions and messages with no agent' {

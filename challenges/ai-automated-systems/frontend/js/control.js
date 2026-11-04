@@ -196,6 +196,9 @@ const INJECT_MENU = [
     // Red-team and resilience tests of the Warden itself.
     ['Warden Tests', [['rogue-tao', 'Compromised AI Commander'], ['rogue', 'Rogue Lookout Agent'], ['llm-outage', 'AI Model Outage (60 s)'],
         ['system-check', 'System Check Now']]],
+    // MORDECAI demos (POST /api/drill/<id>): live onboarding, condition flip, field promotion.
+    ['MORDECAI', [['drill:onboard', 'Onboard Agent Live'], ['drill:condition-flip', 'Condition Flip (GQ)'],
+        ['drill:field-promotion', 'Field Promotion Drill']]],
 ];
 
 function openInjectMenu() {
@@ -211,7 +214,8 @@ function openInjectMenu() {
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     scrim.querySelector('[data-close]').addEventListener('click', close);
     scrim.querySelectorAll('[data-inj]').forEach(b => b.addEventListener('click', () => {
-        BW.act('POST', `/api/inject/${b.dataset.inj}`, null, `Injected: ${b.textContent}`);   // stays open: Escape or Close
+        const id = b.dataset.inj;
+        BW.act('POST', id.startsWith('drill:') ? `/api/drill/${id.slice(6)}` : `/api/inject/${id}`, null, `Injected: ${b.textContent}`);   // stays open: Escape or Close
     }));
     document.addEventListener('keydown', onKey);
 }
