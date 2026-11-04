@@ -10,6 +10,8 @@ BeforeAll {
     $script:RealReader = [BridgeWarden.FairleadKey]::Reader
     # Another test file may have left the AI logger pointing at a Warden whose ledger it has since closed.
     [BridgeWarden.Llm]::SetLogger($null)
+    # ...and its LLM_* variables (LLM_LOCAL_MODEL=test-model, for one), so clear ours before the first test too.
+    foreach ($v in $script:Vars) { [Environment]::SetEnvironmentVariable($v, $null) }
     function Set-Env([string]$Name, [string]$Value) { [Environment]::SetEnvironmentVariable($Name, $Value) }
     function Start-Fake([bool]$Fairlead) {
         Set-Env 'LLM_BASE_URL' "http://localhost:$($script:Port)/v1"
