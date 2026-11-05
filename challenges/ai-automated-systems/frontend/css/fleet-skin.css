@@ -61,3 +61,68 @@ html[data-skin="fleet"] .panel { border-color: var(--fl-border); }
 
 /* SAFE-STOP / RESUME hold button keeps its stacked layout and white hint text on the red fill. */
 html[data-skin="fleet"] .hold-btn .sub { color: #ffffff; }
+
+/* ---- Fleet polish: calm, not loud ---------------------------------------------------------------------------
+   Fleet rules (UNIFIED-UI 3.1): the accent is for primary actions, active navigation and selection only; status
+   colors are signals, not fills. So controls are quiet muted fills with a control border, and success / warning /
+   danger are tinted buttons and badges (colored text and border on a faint tint). The only solid red left is the
+   safety-critical SAFE-STOP. */
+html[data-skin="fleet"] .btn { background: var(--fl-muted); color: var(--fl-foreground); border: 1px solid var(--fl-control-border); font-weight: 600; letter-spacing: .01em; }
+html[data-skin="fleet"] .btn:hover { background: var(--fl-border); border-color: var(--fl-brass); }
+html[data-skin="fleet"] .btn:disabled { background: var(--fl-sidebar); color: var(--fl-muted-foreground); border-color: var(--fl-border); }
+html[data-skin="fleet"] .btn.primary { background: rgb(94 200 224 / .12); color: var(--fl-accent); border-color: rgb(94 200 224 / .55); }
+html[data-skin="fleet"] .btn.primary:hover { background: rgb(94 200 224 / .24); border-color: var(--fl-accent); }
+
+html[data-skin="fleet"] .btn.success { background: rgb(79 179 134 / .14); color: var(--fl-success); border-color: rgb(79 179 134 / .6); }
+html[data-skin="fleet"] .btn.success:hover { background: rgb(79 179 134 / .26); border-color: var(--fl-success); }
+html[data-skin="fleet"] .btn.warn { background: rgb(224 164 67 / .12); color: var(--fl-warning); border-color: rgb(224 164 67 / .55); }
+html[data-skin="fleet"] .btn.warn:hover { background: rgb(224 164 67 / .24); border-color: var(--fl-warning); }
+html[data-skin="fleet"] .btn.danger { background: rgb(239 106 90 / .12); color: var(--fl-danger); border-color: rgb(239 106 90 / .55); }
+html[data-skin="fleet"] .btn.danger:hover { background: rgb(239 106 90 / .24); border-color: var(--fl-danger); }
+
+/* Navigation: the active item takes the accent text and a bar, like every Fleet sidebar. */
+html[data-skin="fleet"] .nav-item.active, html[data-skin="fleet"] .navgrid .nav-item.active { background: var(--fl-muted); color: var(--fl-accent); box-shadow: inset 4px 0 0 var(--fl-accent), inset 0 0 0 1px var(--fl-border-strong); }
+html[data-skin="fleet"] .navgrid .nav-item { background-color: transparent; box-shadow: inset 0 0 0 1px var(--fl-border); font-weight: 500; }
+html[data-skin="fleet"] .navgrid .nav-item:hover { background-color: var(--fl-muted); }
+
+/* Section labels are brass, one color, instead of blue and orange. */
+html[data-skin="fleet"] .label.blue, html[data-skin="fleet"] .label.orange { color: var(--fl-brass); }
+
+/* Segmented controls and the ASK / ACT switch. */
+html[data-skin="fleet"] .seg button.on, html[data-skin="fleet"] .oversight .seg button.on { background: rgb(94 200 224 / .16); color: var(--fl-accent); box-shadow: inset 0 -3px 0 var(--fl-accent); }
+html[data-skin="fleet"] .oversight .seg button.on.red { background: rgb(239 106 90 / .16); color: var(--fl-danger); box-shadow: inset 0 -3px 0 var(--fl-danger); }
+html[data-skin="fleet"] .authsw.is-ask .ask { background: rgb(224 164 67 / .2); color: var(--fl-warning); box-shadow: inset 0 -3px 0 var(--fl-warning); }
+html[data-skin="fleet"] .authsw.is-act .act { background: rgb(79 179 134 / .2); color: var(--fl-success); box-shadow: inset 0 -3px 0 var(--fl-success); }
+
+/* The log: a quiet tint and a status bar on the left, not solid green or red stripes. */
+html[data-skin="fleet"] .log .ln.milestone { background: rgb(79 179 134 / .09); color: var(--fl-foreground); font-weight: 600; box-shadow: inset 3px 0 0 var(--fl-success); padding-left: 10px; }
+html[data-skin="fleet"] .log .ln.milestone-red { background: rgb(239 106 90 / .1); color: var(--fl-foreground); font-weight: 600; box-shadow: inset 3px 0 0 var(--fl-danger); padding-left: 10px; }
+
+/* Agent tiles: tinted state chips. */
+html[data-skin="fleet"] .agent-tile { border: 1px solid var(--fl-border); }
+html[data-skin="fleet"] .at-idle { background: var(--fl-sidebar); color: var(--fl-muted-foreground); }
+html[data-skin="fleet"] .at-active { background: rgb(79 179 134 / .16); color: var(--fl-success); border-color: rgb(79 179 134 / .6); }
+html[data-skin="fleet"] .at-escalated { background: rgb(224 164 67 / .16); color: var(--fl-warning); border-color: rgb(224 164 67 / .6); }
+html[data-skin="fleet"] .at-paused { background: var(--fl-muted); color: var(--fl-muted-foreground); }
+html[data-skin="fleet"] .at-quarantined { background: rgb(239 106 90 / .16); color: var(--fl-danger); border-color: rgb(239 106 90 / .6); }
+
+/* Banners: a card with a colored edge, not a full-color slab. */
+html[data-skin="fleet"] .notify { background: var(--fl-popover); color: var(--fl-foreground); border: 1px solid var(--fl-border-strong); border-left-width: 6px; box-shadow: var(--fl-shadow); }
+html[data-skin="fleet"] .n-system { border-left-color: var(--fl-brass); } html[data-skin="fleet"] .n-success { background: var(--fl-popover); border-left-color: var(--fl-success); }
+html[data-skin="fleet"] .n-warn { background: var(--fl-popover); border-left-color: var(--fl-warning); } html[data-skin="fleet"] .n-error { background: var(--fl-popover); border-left-color: var(--fl-danger); }
+html[data-skin="fleet"] .n-decision { background: var(--fl-popover); color: var(--fl-foreground); border-left-color: var(--fl-warning); }
+html[data-skin="fleet"] .notify-pill, html[data-skin="fleet"] .pill.warn { background: rgb(224 164 67 / .18); color: var(--fl-warning); border: 1px solid rgb(224 164 67 / .6); }
+
+/* SAFE-STOP stays solid and obvious; RESUME is a calm green. */
+html[data-skin="fleet"] .hold-btn.red { background: #b8382b; border: 2px solid #ef6a5a; }
+html[data-skin="fleet"] .hold-btn.green { background: #2f7d57; border: 2px solid var(--fl-success); }
+
+/* Log text reads as text: the source column carries the level color, the message stays in body color (errors stay red). */
+html[data-skin="fleet"] .log .ln > span:last-child { color: var(--fl-foreground); }
+html[data-skin="fleet"] .log .ln > span.lv-error:last-child { color: var(--fl-danger); }
+html[data-skin="fleet"] .log .ln > span.lv-warn:last-child, html[data-skin="fleet"] .log .ln > span.lv-system:last-child, html[data-skin="fleet"] .log .ln > span.lv-engine:last-child { color: var(--fl-muted-foreground); }
+html[data-skin="fleet"] .log .ln.milestone > span:last-child, html[data-skin="fleet"] .log .ln.milestone-red > span:last-child { color: var(--fl-foreground); }
+
+/* The one primary action on the operator screen is a solid accent fill. */
+html[data-skin="fleet"] .btn[data-act="start"] { background: var(--fl-accent); color: var(--fl-accent-ink); border-color: transparent; font-weight: 700; }
+html[data-skin="fleet"] .btn[data-act="start"]:hover { background: var(--fl-accent); filter: brightness(1.1); border-color: transparent; }
