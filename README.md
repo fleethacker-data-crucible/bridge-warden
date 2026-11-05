@@ -48,7 +48,7 @@ Settings are saved to `backend\.env` (never committed). See `backend\.env.exampl
 
 - **13 AI agents in three pictures:** Navigation, Ship Systems and Damage Control. Fast, deterministic lookouts watch and do the math; one language model per picture chooses among the options they offer.
 - **An 8-stage Warden pipeline** checks every order: authentication, authorization, constraints, quota, conflicts, arbitration, approval, execution. Weapons and personnel orders always wait for a human.
-- **Human authority:** decisions carry a countdown and a safe default, a system check asks the operator to confirm every two minutes, and holding **SAFE-STOP** for two seconds halts every agent.
+- **Human authority:** decisions carry a countdown and a safe default, a system check asks the operator to confirm operations (on demand with **Sys Check**, or every two minutes when `system_checks` is turned on in `backend\config\policies.json`; it is off by default), and holding **SAFE-STOP** for two seconds halts every agent.
 - **Containment:** a hijacked or misbehaving agent is blocked and quarantined while the lookouts keep the ship safe by doctrine.
 - **Provenance and audit:** each decision shows who made it, what they saw, the model, the latency and a hash of the reply, in a tamper-evident, hash-chained ledger you can verify.
 - **Ask Warden:** a chat grounded in the live picture. It proposes actions; nothing runs until you press Confirm.
