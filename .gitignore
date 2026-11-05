@@ -13,9 +13,9 @@ dist/
 **/backend/data/
 
 # C# host runtime output
-challenges/ai-automated-systems/logs/
-challenges/ai-automated-systems/temp/
-challenges/ai-automated-systems/host/.pid
+logs/
+temp/
+src/.pid
 
 # Generated distribution packages belong in release assets, not source history.
 **/Bridge_Warden.package

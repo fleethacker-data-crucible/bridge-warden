@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridge Warden Overview</title>
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2329;--muted:#5d6670;--card:#fff;--line:#d9d6cc;--accent:#1f5f8b;--ok:#2e7d4f}
+@media (prefers-color-scheme:dark){:root{--bg:#12161a;--fg:#e6e8ea;--muted:#9aa3ab;--card:#1b2127;--line:#2c343c;--accent:#6fb3e0;--ok:#6fcf97}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,Segoe UI,sans-serif}
+main{max-width:980px;margin:0 auto;padding:32px 16px 64px}
+h1{margin:0 0 4px;font-size:2rem}
+h2{margin:40px 0 12px;font-size:1.3rem;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);margin:0 0 24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+td:first-child{width:34%;font-weight:600}
+code{font:.88em Consolas,monospace;background:rgba(127,127,127,.12);padding:1px 5px;border-radius:4px}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.flow span{background:var(--accent);color:var(--bg);padding:4px 10px;border-radius:999px;font-size:.85rem;font-weight:600}
+.flow i{color:var(--muted);font-style:normal}
+ul{margin:6px 0;padding-left:20px}
+.ok{color:var(--ok);font-weight:700}
+@media (max-width:640px){td:first-child{width:auto}th,td{display:block}th{display:none}td:first-child{border-bottom:0;padding-bottom:0}}
+</style>
+</head>
+<body>
+<main>
+<h1>Bridge Warden — Overview</h1>
+<p class="sub">How the prototype maps to the FLEETHACKER multi-agent governance challenge. Team Data Crucible.</p>
+
+<h2>1. The challenge</h2>
+<div class="card">
+<p>Future vessels will run many AI and autonomous systems at once. Each may work alone, but together they become hard to predict, monitor and control. The ask is <b>not more agents</b>, but an <b>orchestration and governance layer</b> that makes multi-agent systems visible, bounded and manageable.</p>
+<p><b>Requirement:</b> a concept or prototype showing how onboard AI systems share information, coordinate actions, stay within authority limits, and remain under human oversight.</p>
+</div>
+
+<h2>2. Bridge Warden in one line</h2>
+<div class="card">
+<p>A governance layer between the ship's AI agents and the ship: <b>agents recommend, Warden checks every order, a human stays in charge.</b> No AI order reaches the ship except through Warden.</p>
+<div class="flow"><span>Agent intent</span><i>→</i><span>Authenticate</span><i>→</i><span>Authorize</span><i>→</i><span>Constraints</span><i>→</i><span>Quota</span><i>→</i><span>Conflicts</span><i>→</i><span>Arbitrate</span><i>→</i><span>Approve</span><i>→</i><span>Execute</span><i>→</i><span>Ledger</span></div>
+<p style="margin:0;color:var(--muted)">The 8-stage pipeline in <code>src/src/Engine.cs</code>. 13 agents across three pictures (Navigation, Ship Systems, Damage Control), runnable on a synthetic ship sim.</p>
+</div>
+
+<h2>3. Challenge questions → answers</h2>
+<table>
+<tr><th>Question</th><th>How Bridge Warden answers it</th></tr>
+<tr><td>Which AI agents are currently active?</td><td>Agent tiles in <b>Warden Control</b> show every agent and its state (active, paused, quarantined, offline, NO MODEL). Registry in <code>backend/config/agents.json</code>; protocol agents send heartbeats.</td></tr>
+<tr><td>What can each agent access?</td><td>Each agent's manifest declares its role, class, tools and the data it sees. The agent drawer shows it; a manifest mismatch triggers quarantine.</td></tr>
+<tr><td>What is each agent authorized to recommend or perform?</td><td><b>Authorize</b> stage plus <code>deny</code> rules in <code>policies.json</code>. Weapons and personnel orders always wait for a human.</td></tr>
+<tr><td>Where do recommendations or resource demands conflict?</td><td><b>Conflicts</b> + <b>Arbitrate</b> stages detect clashing orders and resolve by rank (MORDECAI: base rank + ship-condition modifiers, e.g. General Quarters). Oscillation detection catches flip-flopping.</td></tr>
+<tr><td>How are unsafe or non-compliant interactions detected?</td><td><b>Constraints</b> stage checks physical and safety limits (CPA, max speed, propulsion state, engine temps). Repeated violations auto-quarantine the agent. Omission detection flags missed duties.</td></tr>
+<tr><td>How can operators pause, override, constrain or roll back?</td><td>Hold <b>SAFE-STOP</b> 2 s to halt all agents; pause or quarantine single agents; approve/deny decisions with countdown and safe default; rollbacks counted and logged; Ask Warden proposes, nothing runs until Confirm.</td></tr>
+</table>
+
+<h2>4. Suggested capabilities → where they live</h2>
+<table>
+<tr><th>Capability</th><th>Bridge Warden part</th></tr>
+<tr><td>Agent identity, role, authority</td><td>Authenticate + Authorize stages; manifests in <code>agents.json</code>; human-assigned base rank</td></tr>
+<tr><td>Common operating picture</td><td>Three shared pictures (Navigation radar, Ship Systems, Damage Control) in the main app</td></tr>
+<tr><td>Agent-to-agent protocol</td><td>MORDECAI protocol: registered manifests, signed messages, heartbeats, halt-acknowledge (<code>Mordecai.cs</code>, <code>/api/protocol</code>)</td></tr>
+<tr><td>Conflict detection</td><td>Conflicts + Arbitrate stages, oscillation flips</td></tr>
+<tr><td>Priority, escalation, approval</td><td>Rank by ship condition; escalation timeout; Approve stage with countdown and safe default</td></tr>
+<tr><td>Human-in-the-loop support</td><td>Decision cards, periodic system check the operator must confirm, Ask Warden grounded chat</td></tr>
+<tr><td>Logging and explainability</td><td>Hash-chained, verifiable ledger: who decided, what they saw, model, latency, reply hash (<code>Ledger.cs</code>, <code>Explain.cs</code>)</td></tr>
+<tr><td>Safety / operational constraint monitoring</td><td>Constraints stage, thresholds in <code>policies.json</code></td></tr>
+<tr><td>Resource and capability limits</td><td>Quota stage; per-agent deny rules; max agents / max rank caps</td></tr>
+<tr><td>Safe-stop, rollback, containment</td><td>SAFE-STOP, rollback, quarantine; deterministic lookouts keep the ship safe by doctrine (<b>REFLEX</b>) when a model is hijacked or absent</td></tr>
+</table>
+
+<h2>5. Fit summary</h2>
+<div class="card">
+<ul>
+<li><span class="ok">Visible</span> — live agent registry, shared pictures, explainable ledger.</li>
+<li><span class="ok">Bounded</span> — every order passes authority, constraint and quota checks.</li>
+<li><span class="ok">Manageable</span> — human approval, SAFE-STOP, quarantine, rollback.</li>
+<li><span class="ok">Configurable</span> — add an agent or rule in <code>backend/config/</code> without code changes.</li>
+</ul>
+<p style="margin:8px 0 0;color:var(--muted)">Try it: run <code>Launch_Bridge_Warden.bat</code>, press <b>Start Operations</b>, then <b>Inject Issues…</b> in Warden Control.</p>
+</div>
+</main>
+</body>
+</html>
