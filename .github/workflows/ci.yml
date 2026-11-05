@@ -12,10 +12,10 @@ on:
       tests-path:
         description: Folder with Pester tests (falls back to templates/tests)
         type: string
-        default: challenges/ai-automated-systems/host/tests
+        default: src/tests
 env:
   # Override per repo if tests live elsewhere. Falls back to templates/tests when missing.
-  TESTS_PATH: ${{ inputs.tests-path || 'challenges/ai-automated-systems/host/tests' }}
+  TESTS_PATH: ${{ inputs.tests-path || 'src/tests' }}
   # The host shows a message box on a fatal error; never on a runner. The LLM agent stays off (no model, no keys).
   BW_NO_MESSAGEBOX: '1'
   LLM_AGENT: 'off'
@@ -67,7 +67,7 @@ jobs:
           if (@($r | Where-Object Severity -eq 'Error').Count -gt 0) { throw 'PSScriptAnalyzer found errors' }
       - name: Bridge Warden host self-check (source rules + compile)
         run: |
-          & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File challenges\ai-automated-systems\host\Start-BridgeWarden.ps1 -CheckOnly
+          & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File src\Start-BridgeWarden.ps1 -CheckOnly
           if ($LASTEXITCODE -ne 0) { throw "Start-BridgeWarden.ps1 -CheckOnly failed ($LASTEXITCODE)" }
       - name: Tests (Pester 5)
         run: |

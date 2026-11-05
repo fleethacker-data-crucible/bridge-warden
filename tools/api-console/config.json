@@ -1,6 +1,0 @@
-{
-    "engine": "deno",
-    "port": 8080,
-    "window": { "width": 1500, "height": 950 },
-    "denoPath": ""
-}

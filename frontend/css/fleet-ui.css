@@ -1,0 +1,385 @@
+/* Bridge Warden on the shared Fleet UI (docs/UNIFIED-UI.md v0.2). Tokens come from vendor/fleet/fleet.css, copied
+   unchanged from the other Fleet tools. This file is the app's own layer: the Fleet shell (240 px sidebar with the
+   emblem, 56 px header, 28 px status bar), Fleet components for the new screens, and the old screens' classes mapped onto
+   the --fl-* tokens. FLEET UI REQUIREMENTS MUST BE APPLIED: see AGENTS.md. */
+
+/* ---- signature accent: Bridge Warden's signal lamp -------------------------------------------------------- */
+[data-app='bridge-warden'] { --fl-accent-night: #5ec8e0; --fl-accent-chart: #0b6a80; }
+
+/* ---- the old tokens, now backed by the Fleet tokens (so both themes work) ----------------------------------- */
+:root {
+  --bg-titlebar: var(--fl-sidebar); --bg-app: var(--fl-background); --bg-panel: var(--fl-surface); --bg-inset: var(--fl-sidebar);
+  --bg-tile: var(--fl-card); --bg-row: var(--fl-card); --bg-row-hover: var(--fl-muted); --bg-modal: var(--fl-popover);
+  --scrim: rgb(3 12 18 / .62);
+  --border: var(--fl-border); --border-strong: var(--fl-control-border);
+  --text: var(--fl-foreground); --text-muted: var(--fl-muted-foreground); --text-dim: var(--fl-muted-foreground);
+  --blue: var(--fl-accent); --blue-fill: var(--fl-accent); --blue-hover: var(--fl-accent);
+  --green: var(--fl-success); --green-hover: var(--fl-success); --orange: var(--fl-warning); --orange-hover: var(--fl-warning);
+  --red: var(--fl-danger); --red-fill: var(--fl-danger); --red-hover: var(--fl-danger);
+  --grey-btn: var(--fl-muted); --grey-btn-hover: var(--fl-border);
+  --logo-control: var(--fl-card); --logo-app: var(--fl-card);
+  --badge-green: var(--fl-success); --badge-blue: var(--fl-info); --badge-purple: #9b98f3; --badge-yellow: var(--fl-warning);
+  --badge-red: var(--fl-danger); --badge-grey: var(--fl-muted-foreground);
+  --pct-low: var(--fl-danger); --pct-mid: var(--fl-warning); --pct-high: var(--fl-success);
+  --log-time: var(--fl-muted-foreground); --log-system: var(--fl-brass); --log-engine: var(--fl-accent); --log-ok: var(--fl-success);
+  --log-warn: var(--fl-warning); --log-error: var(--fl-danger); --log-highlight-bg: var(--fl-success); --log-highlight-fg: var(--fl-background);
+  --state-off: var(--fl-border-strong);
+  --radius-xs: 4px; --radius-sm: var(--fl-radius-control); --radius: var(--fl-radius-card); --radius-lg: var(--fl-radius-dialog);
+  --font-ui: var(--fl-font-body); --font-mono: var(--fl-font-mono);
+  --side-w: 340px;
+}
+html { font-size: 14px; }
+html, body { background: var(--fl-background); color: var(--fl-foreground); font-family: var(--fl-font-body); font-size: var(--fl-text-body); line-height: 1.5; }
+body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+body.fl-app { display: grid; grid-template-columns: var(--fl-sidebar-width) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) var(--fl-statusbar-height); }
+.ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.mono { font-family: var(--fl-font-mono); }
+
+/* ---- sidebar ------------------------------------------------------------------------------------------------- */
+.fl-sidebar { grid-column: 1; grid-row: 1; background: var(--fl-sidebar); border-right: 1px solid var(--fl-border); display: flex; flex-direction: column; min-height: 0; }
+.fl-brand { text-align: center; padding: 16px 12px 8px; }
+.fl-brand img { width: 190px; height: 190px; object-fit: contain; }
+.fl-wordmark { font: 700 17px/1.1 var(--fl-font-display); letter-spacing: .14em; margin-top: 2px; }
+.fl-tag { font-size: 12px; color: var(--fl-muted-foreground); margin: 6px 0 4px; padding-top: 6px; border-top: 1px solid var(--fl-brass); display: inline-block; min-width: 140px; }
+.fl-nav { flex: 1; min-height: 0; overflow: auto; padding: 4px 0 8px; display: flex; flex-direction: column; }
+.fl-navlabel { font: 600 12px var(--fl-font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--fl-muted-foreground); padding: 14px 16px 4px; }
+.fl-nav .nav-item { font: 500 14px var(--fl-font-body); display: flex; align-items: center; gap: 12px; min-height: 34px; height: auto; padding: 0 16px; border: 0; border-left: 3px solid transparent; border-radius: 0; background: none; box-shadow: none; color: var(--fl-muted-foreground); cursor: pointer; text-align: left; width: 100%; }
+.fl-nav .nav-item:hover { background: var(--fl-muted); color: var(--fl-foreground); }
+.fl-nav .nav-item.active { color: var(--fl-accent); border-left-color: var(--fl-accent); background: rgb(94 200 224 / .08); box-shadow: none; }
+.fl-nav .nav-item .nm { flex: 1; }
+.fl-nav .nav-item .count { margin-left: auto; font: 600 12px var(--fl-font-mono); color: var(--fl-foreground); }
+.fl-nav .nav-item .count .badge { height: 18px; }
+.fl-sidefoot { padding: 12px; border-top: 1px solid var(--fl-border); display: flex; flex-direction: column; gap: 8px; }
+.fl-stop { width: 100%; justify-content: center; }
+
+/* ---- main column, header, simulation bar -------------------------------------------------------------------- */
+.fl-main { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.fl-header { height: var(--fl-header-height); flex: none; display: flex; align-items: center; gap: 12px; padding: 0 20px; background: var(--fl-surface); border-bottom: 1px solid var(--fl-border); }
+.fl-title { margin: 0; font: 700 20px/1.25 var(--fl-font-display); white-space: nowrap; }
+.fl-sim { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--fl-warning); color: var(--fl-warning); background: rgb(224 164 67 / .12); font: 700 12px var(--fl-font-body); letter-spacing: .06em; white-space: nowrap; }
+.fl-sim .ic { width: 14px; height: 14px; }
+.fl-header .subtitle { flex: 1; min-width: 0; margin: 0; font-size: 12px; color: var(--fl-muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-hctl { display: flex; align-items: center; gap: 20px; margin-left: auto; }
+.fl-hctl .hk { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; }
+.fl-hctl .hk .l { font-size: 11px; color: var(--fl-muted-foreground); }
+.fl-hctl .hk .v { font: 700 14px var(--fl-font-body); font-variant-numeric: tabular-nums; }
+.fl-gear { width: 36px; padding: 0; justify-content: center; }
+.fl-simbar { flex: none; display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 3px 20px; background: rgb(224 164 67 / .1); border-bottom: 1px solid rgb(224 164 67 / .4); color: var(--fl-foreground); font-size: 13px; }
+.fl-simbar .ic { width: 16px; height: 16px; color: var(--fl-warning); }
+.banner { display: none; flex: none; padding: 6px 20px; text-align: center; font: 700 13px var(--fl-font-body); letter-spacing: .06em; background: var(--fl-danger); color: var(--fl-background); }
+.banner.show { display: block; }
+.banner.paused-banner { background: var(--fl-warning); }
+.shell { flex: 1; display: flex; min-height: 0; min-width: 0; }
+.side-extra { width: var(--side-w); flex: none; border-right: 1px solid var(--fl-border); background: var(--fl-surface); padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
+.side-extra:empty { display: none; }
+.with-drawer { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.content { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 20px 24px; background: var(--fl-surface); }
+.content.nav-full { padding: 12px 16px; overflow: hidden; }
+.drawer { width: 0; flex: none; overflow: auto; background: var(--fl-card); border-left: 0 solid var(--fl-border); transition: width 160ms; }
+.drawer.open { width: min(460px, 42%); padding: 20px; border-left-width: 1px; }
+@media (prefers-reduced-motion: reduce) { .drawer { transition: none; } }
+
+/* ---- status bar --------------------------------------------------------------------------------------------- */
+.fl-status { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 20px; padding: 0 16px; background: var(--fl-sidebar); border-top: 1px solid var(--fl-border); font-size: 12px; color: var(--fl-muted-foreground); }
+.fl-status .sb { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.fl-status .sb.right { margin-left: auto; }
+.fl-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fl-muted-foreground); }
+.fl-status .dot.run { background: var(--fl-success); } .fl-status .dot.stop { background: var(--fl-danger); } .fl-status .dot.pause { background: var(--fl-warning); }
+
+/* ---- Fleet buttons, inputs, dialogs (the .fl-* components) ------------------------------------------------- */
+.fl-btn { text-decoration: none; }
+.fl-btn .ic { width: 16px; height: 16px; }
+.fl-btn--danger { background: var(--fl-danger); color: var(--fl-background); font-weight: 700; }
+.fl-btn--danger:hover { filter: brightness(1.08); }
+.fl-btn--success { background: var(--fl-success); color: var(--fl-background); font-weight: 700; }
+.fl-btn--success:hover { filter: brightness(1.08); }
+.fl-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fl-sidefoot .fl-btn { width: 100%; justify-content: center; }
+.fl-scrim { position: fixed; inset: 0; z-index: 2100; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
+.fl-scrim[hidden] { display: none; }
+.fl-modal { width: min(520px, 100%); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.fl-modal h2 { margin: 0; font: 700 20px/1.25 var(--fl-font-display); }
+.fl-modal p { margin: 0; color: var(--fl-muted-foreground); }
+.fl-modal--danger { border-color: var(--fl-danger); box-shadow: var(--fl-shadow); }
+.fl-help { font-size: 13px; color: var(--fl-muted-foreground); }
+.fl-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.fl-input { width: 100%; }
+.fl-chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font: 600 12px var(--fl-font-body); border: 1px solid currentColor; }
+
+/* ---- the old controls, mapped onto the Fleet components ---------------------------------------------------- */
+.btn { height: 32px; padding: 0 12px; border: 1px solid var(--fl-control-border); border-radius: var(--fl-radius-control); background: transparent; color: var(--fl-foreground); font: 500 13px var(--fl-font-body); cursor: pointer; transition: background-color var(--fl-duration); }
+.btn:hover { background: var(--fl-muted); }
+.btn:focus-visible, .nav-item:focus-visible { outline: 2px solid var(--fl-brass); outline-offset: 2px; }
+.btn:disabled { opacity: .5; background: transparent; color: var(--fl-muted-foreground); cursor: not-allowed; }
+.btn.lg { height: 36px; padding: 0 16px; font-size: 14px; }
+.btn.primary { background: var(--fl-accent); color: var(--fl-accent-ink); border-color: transparent; font-weight: 600; }
+.btn.primary:hover { background: var(--fl-accent); filter: brightness(1.1); }
+.btn.success { background: transparent; color: var(--fl-success); border-color: var(--fl-success); }
+.btn.success:hover { background: rgb(79 179 134 / .16); }
+.btn.warn { background: transparent; color: var(--fl-warning); border-color: var(--fl-warning); }
+.btn.warn:hover { background: rgb(224 164 67 / .16); }
+.btn.danger { background: var(--fl-danger); color: var(--fl-background); border-color: transparent; font-weight: 700; }
+.btn.danger:hover { background: var(--fl-danger); filter: brightness(1.08); }
+.decision .btn.success.lg, .watch-detail .btn.success.lg { background: var(--fl-success); color: var(--fl-background); border-color: transparent; font-weight: 700; }
+.decision .btn.success.lg:hover { background: var(--fl-success); filter: brightness(1.08); }
+.btn-row { gap: 8px; }
+.badge { height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; letter-spacing: .02em; }
+.b-green { background: rgb(79 179 134 / .14); } .b-blue { background: rgb(106 167 224 / .14); } .b-purple { background: rgb(155 152 243 / .14); }
+.b-yellow { background: rgb(224 164 67 / .14); } .b-red { background: rgb(239 106 90 / .14); } .b-grey { background: rgb(169 180 186 / .12); }
+.label { font: 600 12px var(--fl-font-body); letter-spacing: .06em; color: var(--fl-muted-foreground); }
+.label.blue, .label.orange, .label.neutral { color: var(--fl-muted-foreground); }
+.page-title { font: 700 16px var(--fl-font-body); }
+.toolbar { margin-bottom: 16px; gap: 8px; }
+.card, .decision, .tile, .oversight, .agentcard { background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); }
+.card { padding: 14px 16px; }
+.card.attn { border-color: var(--fl-warning); }
+.decision { padding: 14px 16px; margin-bottom: 10px; }
+.decision .plain-head { font: 600 15px/1.35 var(--fl-font-body); }
+.countdown { height: 4px; border-radius: 2px; background: var(--fl-muted); overflow: hidden; margin: 8px 0 4px; }
+.countdown > div { height: 100%; background: var(--fl-warning); }
+.table .thead { font: 600 12px var(--fl-font-body); letter-spacing: .04em; color: var(--fl-muted-foreground); }
+.table .trow, .agent-row { background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-control); min-height: 40px; }
+.table .trow:hover, .agent-row:hover { background: var(--fl-muted); }
+.table .trow.sel, .agent-row.sel, .trow[aria-selected='true'] { border-color: var(--fl-accent); }
+.log, .inset { background: var(--fl-sidebar); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-control); font-family: var(--fl-font-mono); }
+.log .ln.milestone { background: rgb(79 179 134 / .1); color: var(--fl-foreground); box-shadow: inset 3px 0 0 var(--fl-success); padding-left: 10px; font-weight: 600; }
+.log .ln.milestone-red { background: rgb(239 106 90 / .1); color: var(--fl-foreground); box-shadow: inset 3px 0 0 var(--fl-danger); padding-left: 10px; font-weight: 600; }
+.log .ln > span:last-child:not(.lv-error) { color: var(--fl-foreground); }
+.authsw { height: 30px; border-radius: var(--fl-radius-control); border-color: var(--fl-control-border); background: var(--fl-sidebar); }
+.authsw span { color: var(--fl-muted-foreground); }
+.authsw.is-ask .ask { background: rgb(224 164 67 / .2); color: var(--fl-warning); box-shadow: inset 0 -3px 0 var(--fl-warning); }
+.authsw.is-act .act { background: rgb(79 179 134 / .2); color: var(--fl-success); box-shadow: inset 0 -3px 0 var(--fl-success); }
+.seg button.on, .oversight .seg button.on { background: rgb(94 200 224 / .16); color: var(--fl-accent); box-shadow: inset 0 -3px 0 var(--fl-accent); }
+.notify { background: var(--fl-popover); color: var(--fl-foreground); border: 1px solid var(--fl-border-strong); border-left-width: 6px; border-radius: var(--fl-radius-control); box-shadow: var(--fl-shadow); }
+.n-system { border-left-color: var(--fl-brass); } .n-success { background: var(--fl-popover); border-left-color: var(--fl-success); } .n-warn { background: var(--fl-popover); border-left-color: var(--fl-warning); }
+.n-error { background: var(--fl-popover); border-left-color: var(--fl-danger); } .n-decision { background: var(--fl-popover); color: var(--fl-foreground); border-left-color: var(--fl-warning); }
+.notify-pill, .pill.warn { background: rgb(224 164 67 / .16); color: var(--fl-warning); border: 1px solid var(--fl-warning); }
+.chat-toggle { background: var(--fl-accent); color: var(--fl-accent-ink); border-radius: 999px; font-weight: 700; }
+.chat-panel { background: var(--fl-popover); border: 1px solid var(--fl-border-strong); border-radius: var(--fl-radius-dialog); box-shadow: var(--fl-shadow); }
+input, select, textarea { font-family: var(--fl-font-body); }
+input[type='text'], input:not([type]), input[type='search'], input[type='password'], select, textarea, .fl-input { background: var(--fl-surface); color: var(--fl-foreground); border: 1px solid var(--fl-control-border); border-radius: var(--fl-radius-control); }
+.agent-tile { border: 1px solid var(--fl-border); }
+.at-idle { background: var(--fl-sidebar); color: var(--fl-muted-foreground); }
+.at-active { background: rgb(79 179 134 / .16); color: var(--fl-success); border-color: rgb(79 179 134 / .6); }
+.at-escalated { background: rgb(224 164 67 / .16); color: var(--fl-warning); border-color: rgb(224 164 67 / .6); }
+.at-paused { background: var(--fl-muted); color: var(--fl-muted-foreground); }
+.at-quarantined { background: rgb(239 106 90 / .16); color: var(--fl-danger); border-color: rgb(239 106 90 / .6); }
+.hold-btn.red { background: var(--fl-danger); color: var(--fl-background); }
+.hold-btn.green { background: var(--fl-success); color: var(--fl-background); }
+.hold-btn .sub { color: var(--fl-background); }
+
+/* ---- the radar and plant pictures stay dark in every theme (drawn for a dark scope) ------------------------- */
+.cop-main, .nav-center, .sys-center, .dc-main .cop-frame, .cop-frame { --text: #f4ead6; --text-muted: #a9b4ba; --border: #24465e; --bg-app: #071a26; --bg-panel: #0a2130; --bg-inset: #071a26; --bg-tile: #112d40; --bg-row: #112d40; --fl-foreground: #f4ead6; }
+.cop-frame, .nav-center, .sys-center { background: #071a26; border-radius: var(--fl-radius-card); }
+
+/* ---- Watch screen -------------------------------------------------------------------------------------------- */
+.watch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 460px); gap: 20px; align-items: start; }
+.watch-main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.w-h { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 8px; }
+.w-h h2 { margin: 0; font: 600 16px var(--fl-font-body); }
+.w-h .meta { font-size: 12px; color: var(--fl-muted-foreground); }
+.w-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.w-tile { background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); padding: 12px 14px; }
+.w-tile .l { font: 600 12px var(--fl-font-body); letter-spacing: .04em; text-transform: uppercase; color: var(--fl-muted-foreground); }
+.w-tile .v { font: 600 26px/1.1 var(--fl-font-mono); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.w-tile .v.warn { color: var(--fl-warning); } .w-tile .v.bad { color: var(--fl-danger); } .w-tile .v.ok { color: var(--fl-success); }
+.w-tile .s { font-size: 12px; color: var(--fl-muted-foreground); margin-top: 2px; }
+.w-agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.w-agent { background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-control); padding: 8px 12px; display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; color: inherit; cursor: pointer; font: inherit; }
+.w-agent:hover { background: var(--fl-muted); }
+.w-agent .nm { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-agent .st { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fl-muted-foreground); }
+.w-agent .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--fl-success); flex: none; }
+.w-agent.idle .dot { background: var(--fl-border-strong); } .w-agent.esc .dot { background: var(--fl-warning); } .w-agent.quar .dot { background: var(--fl-danger); } .w-agent.paused .dot { background: var(--fl-muted-foreground); }
+.w-agent.quar { border-color: var(--fl-danger); } .w-agent.esc { border-color: rgb(224 164 67 / .7); }
+.w-rows { display: flex; flex-direction: column; gap: 8px; }
+.w-row { display: grid; grid-template-columns: 5px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; text-align: left; background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); padding: 10px 14px 10px 0; color: inherit; font: inherit; cursor: pointer; overflow: hidden; }
+.w-row:hover { background: var(--fl-muted); }
+.w-row[aria-pressed='true'] { border-color: var(--fl-accent); background: var(--fl-muted); }
+.w-row .sev { align-self: stretch; background: var(--fl-warning); }
+.w-row .sev.crit { background: var(--fl-danger); } .w-row .sev.info { background: var(--fl-info); }
+.w-row .t { font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.w-row .s { font-size: 12px; color: var(--fl-muted-foreground); margin-top: 2px; }
+.w-row .tm { font: 600 13px var(--fl-font-mono); color: var(--fl-warning); text-align: right; white-space: nowrap; }
+.w-empty { border: 1px dashed var(--fl-border-strong); border-radius: var(--fl-radius-card); padding: 18px; text-align: center; color: var(--fl-muted-foreground); }
+.w-ledger { font: 12px/1.7 var(--fl-font-mono); background: var(--fl-sidebar); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); padding: 8px 12px; max-height: 220px; overflow: auto; }
+.w-ledger .ln { display: grid; grid-template-columns: 48px 150px minmax(0, 1fr); gap: 10px; }
+.w-ledger .t { color: var(--fl-muted-foreground); }
+.watch-detail { position: sticky; top: 0; background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.watch-detail h3 { margin: 0; font: 700 18px/1.25 var(--fl-font-display); }
+.watch-detail .id { font: 11px var(--fl-font-mono); color: var(--fl-muted-foreground); }
+.violate { border: 1px solid var(--fl-danger); background: rgb(239 106 90 / .1); border-radius: var(--fl-radius-control); padding: 10px 12px; font-size: 13px; }
+.violate b { color: var(--fl-danger); display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rec { background: var(--fl-surface); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-control); padding: 10px 12px; min-width: 0; font-size: 13px; }
+.rec .k { font: 700 12px var(--fl-font-body); letter-spacing: .04em; color: var(--fl-accent); }
+.rec .do { font-weight: 600; margin: 2px 0 0; }
+.w-timer { display: flex; justify-content: space-between; font-size: 12px; color: var(--fl-muted-foreground); }
+.w-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.w-actions .wide { grid-column: 1 / -1; }
+.w-why { font-size: 13px; color: var(--fl-muted-foreground); }
+
+/* ---- Settings ------------------------------------------------------------------------------------------------ */
+.settings { max-width: 720px; display: flex; flex-direction: column; gap: 20px; }
+.set-card { background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); padding: 16px 18px; }
+.set-card h2 { margin: 0 0 4px; font: 600 16px var(--fl-font-body); }
+.set-card p { margin: 0 0 12px; color: var(--fl-muted-foreground); font-size: 13px; }
+.theme-opts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.theme-opt { text-align: left; background: var(--fl-surface); border: 1px solid var(--fl-control-border); border-radius: var(--fl-radius-card); padding: 12px; color: inherit; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.theme-opt:hover { background: var(--fl-muted); }
+.theme-opt[aria-checked='true'] { border-color: var(--fl-accent); box-shadow: inset 0 0 0 1px var(--fl-accent); }
+.theme-opt .nm { font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+.theme-opt .ds { font-size: 12px; color: var(--fl-muted-foreground); }
+.theme-opt .sw { display: flex; gap: 4px; margin-top: 4px; } .theme-opt .sw i { width: 22px; height: 14px; border-radius: 3px; border: 1px solid var(--fl-border-strong); }
+.kv { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; } .kv dt { color: var(--fl-muted-foreground); } .kv dd { margin: 0; }
+
+@media (max-width: 1280px) { .watch { grid-template-columns: minmax(0, 1fr); } .w-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .watch-detail { position: static; } }
+@media (max-width: 1024px) { body.fl-app { grid-template-columns: var(--fl-sidebar-collapsed) minmax(0, 1fr); } .fl-sidebar .fl-brand, .fl-navlabel, .fl-nav .nm, .fl-nav .count, .fl-sidefoot .fl-btn span, .fl-tag { display: none; } .fl-nav .nav-item { justify-content: center; padding: 0; } .fl-sidefoot .fl-btn { padding: 0; justify-content: center; } }
+
+/* ---- Warden Control window (the operator's engine-room view), same Fleet look ------------------------------- */
+.header { height: var(--fl-header-height); gap: 12px; padding: 0 20px; background: var(--fl-surface); border-bottom: 1px solid var(--fl-border); }
+.header .logo { width: 36px; height: 36px; border-radius: 50%; background: url('../img/emblem-96.png') center / contain no-repeat; color: transparent; font-size: 0; }
+.header .vdiv { display: none; }
+.header .title { font: 700 20px/1.25 var(--fl-font-display); }
+.header .subtitle { font-size: 12px; margin: 0; }
+.header .kpi .l { font-size: 11px; } .header .kpi .v { font-size: 16px; }
+.control-body aside.panel { background: var(--fl-surface); border-right: 1px solid var(--fl-border); }
+.control-body .label { margin-top: 18px; }
+.control-body .log-pane, .control-body #logpane { background: var(--fl-background); }
+.skin-toggle { display: none; }
+
+/* Decision buttons inside banners are the strong version: solid, with the Fleet ink color on top. */
+.notify .btn.success, .n-actions .btn.success { background: var(--fl-success); color: var(--fl-background); border-color: transparent; font-weight: 700; }
+.notify .btn.danger, .n-actions .btn.danger { background: var(--fl-danger); color: var(--fl-background); }
+.notify .btn { height: 34px; }
+
+
+/* ---- Match the other Fleet apps (Halyard, Fairlead): quiet status, one accent action -------------------------
+   Affirmative actions are the solid accent. Everything else is an outlined button. Destructive controls are a dark
+   button with coral text and a thin coral border, as in Halyard's "Delete run". Status is a small tinted pill with a word. */
+.btn.success, .decision .btn.success.lg, .watch-detail .btn.success.lg, .notify .btn.success, .n-actions .btn.success, .fl-btn--success {
+  background: var(--fl-accent); color: var(--fl-accent-ink); border: 1px solid transparent; font-weight: 600; }
+.btn.success:hover, .decision .btn.success.lg:hover, .fl-btn--success:hover { background: var(--fl-accent); filter: brightness(1.1); }
+.btn.danger, .notify .btn.danger, .n-actions .btn.danger, .fl-btn--danger {
+  background: var(--fl-card); color: var(--fl-danger); border: 1px solid rgb(239 106 90 / .45); font-weight: 600; }
+.btn.danger:hover, .fl-btn--danger:hover { background: rgb(239 106 90 / .14); border-color: var(--fl-danger); filter: none; }
+.fl-stop { border-width: 1px; }
+.hold-btn.red { background: var(--fl-card); color: var(--fl-danger); border: 2px solid var(--fl-danger); }
+.hold-btn.red .fill { background: rgb(239 106 90 / .3); }
+.hold-btn.green { background: var(--fl-accent); color: var(--fl-accent-ink); border: 2px solid transparent; }
+.hold-btn .sub { color: inherit; opacity: .85; }
+.badge { border: 0; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12px; padding: 0 10px; }
+.badge::first-letter { text-transform: uppercase; }
+.fl-sim { border: 0; background: rgb(224 164 67 / .16); }
+.fl-chip, .chip { border: 0; }
+.w-row .t .badge { text-transform: none; }
+.notify-pill, .pill.warn { border: 0; }
+/* the agent state chips in Warden Control stay square tiles, but quiet: a word-sized tint, not a loud outline */
+.agent-tile { border-width: 1px; }
+:root[data-theme='light'] .btn.danger, :root[data-theme='light'] .fl-btn--danger { background: #fff; color: var(--fl-danger); border-color: var(--fl-danger); }
+
+/* ---- Classic: the original Bridge Warden look (grey panels, blue accent, Exo 2 / Syne Mono), on the same layout ---- */
+:root[data-theme='classic'] {
+  --fl-background: #1b1b1b; --fl-sidebar: #161616; --fl-surface: #1e1e1e; --fl-card: #232323; --fl-popover: #232323;
+  --fl-muted: #2c2c2c; --fl-border: #2e2e2e; --fl-border-strong: #3d3d3d; --fl-control-border: #4a4a4a;
+  --fl-foreground: #f0f0f0; --fl-muted-foreground: #aaaaaa; --fl-brass: #60a5fa;
+  --fl-success: #3fae6a; --fl-warning: #e8892b; --fl-danger: #f87171; --fl-info: #5aa2ff;
+  --fl-accent: #60a5fa; --fl-accent-ink: #ffffff;
+  --fl-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.6);
+  --fl-font-body: "Exo 2", "Segoe UI", sans-serif; --fl-font-mono: "Syne Mono", "JetBrains Mono", Consolas, monospace;
+  --fl-font-display: "Exo 2", "Segoe UI", sans-serif;
+  --fl-radius-control: 4px; --fl-radius-card: 6px; --fl-radius-dialog: 8px;
+  --logo-app: #1d4ed8; --logo-control: #b91c1c; --badge-purple: #b58cf0; --log-system: #ff6fa3; --log-engine: #4dd0e1;
+  --scrim: rgba(0,0,0,.55);
+  color-scheme: dark;
+}
+/* Classic buttons: the original Bridge Warden buttons (solid fills, no outline, bold white text, 4 px corners). */
+:root[data-theme='classic'] .btn,
+:root[data-theme='classic'] .fl-btn { padding: 0 14px; border: 0; border-radius: 4px; background: #3a3a3a; color: #fff; font: 700 15px "Exo 2", "Segoe UI", sans-serif; filter: none; box-shadow: none; transition: background .14s ease-out; white-space: nowrap; cursor: pointer; }
+:root[data-theme='classic'] .btn:hover, :root[data-theme='classic'] .fl-btn:hover { background: #444444; filter: none; }
+:root[data-theme='classic'] .btn:focus-visible, :root[data-theme='classic'] .fl-btn:focus-visible, :root[data-theme='classic'] .hold-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+:root[data-theme='classic'] .btn:disabled, :root[data-theme='classic'] .fl-btn:disabled { opacity: 1; background: #3a3a3a; color: #aaaaaa; cursor: default; }
+:root[data-theme='classic'] .btn.lg, :root[data-theme='classic'] .fl-btn--lg { font-size: 15px; }
+:root[data-theme='classic'] .btn.primary, :root[data-theme='classic'] .fl-btn--primary { background: #1d4ed8; color: #fff; }
+:root[data-theme='classic'] .btn.primary:hover, :root[data-theme='classic'] .fl-btn--primary:hover { background: #2f6fd6; }
+:root[data-theme='classic'] .btn.success, :root[data-theme='classic'] .fl-btn--success,
+:root[data-theme='classic'] .decision .btn.success.lg, :root[data-theme='classic'] .watch-detail .btn.success.lg,
+:root[data-theme='classic'] .notify .btn.success, :root[data-theme='classic'] .n-actions .btn.success { background: #3fae6a; color: #071a26; border: 0; }
+:root[data-theme='classic'] .btn.success:hover, :root[data-theme='classic'] .fl-btn--success:hover,
+:root[data-theme='classic'] .decision .btn.success.lg:hover { background: #369a5d; }
+:root[data-theme='classic'] .btn.warn { background: #e8892b; color: #071a26; border: 0; }
+:root[data-theme='classic'] .btn.warn:hover { background: #d07a24; }
+:root[data-theme='classic'] .btn.danger, :root[data-theme='classic'] .fl-btn--danger,
+:root[data-theme='classic'] .notify .btn.danger, :root[data-theme='classic'] .n-actions .btn.danger { background: #b91c1c; color: #fff; border: 0; }
+:root[data-theme='classic'] .btn.danger:hover, :root[data-theme='classic'] .fl-btn--danger:hover { background: #cc3e43; border: 0; }
+:root[data-theme='classic'] .fl-btn--ghost { background: transparent; }
+:root[data-theme='classic'] .fl-btn--ghost:hover { background: #2c2c2c; }
+:root[data-theme='classic'] .btn-row { gap: 6px; }
+:root[data-theme='classic'] .n-actions .btn:disabled { opacity: .55; background: inherit; filter: saturate(.4); color: #fff; }
+:root[data-theme='classic'] .hold-btn { height: 54px; border: 0; border-radius: 4px; color: #fff; font-weight: 700; font-size: 17px; }
+:root[data-theme='classic'] .hold-btn .fill { background: rgba(255,255,255,.25); }
+:root[data-theme='classic'] .hold-btn .sub { color: inherit; font-size: 12.5px; font-weight: 400; opacity: .85; }
+:root[data-theme='classic'] .hold-btn.red { background: #b91c1c; color: #fff; border: 0; }
+:root[data-theme='classic'] .hold-btn.green { background: #3fae6a; color: #fff; border: 0; }
+:root[data-theme='classic'] .cop-main, :root[data-theme='classic'] .nav-center, :root[data-theme='classic'] .sys-center,
+:root[data-theme='classic'] .cop-frame { --text: #f0f0f0; --text-muted: #aaaaaa; --border: #2e2e2e; --bg-app: #161616; --bg-panel: #1e1e1e; --bg-inset: #161616; --bg-tile: #232323; --bg-row: #2c2c2c; --fl-foreground: #f0f0f0; }
+:root[data-theme='classic'] .cop-frame, :root[data-theme='classic'] .nav-center, :root[data-theme='classic'] .sys-center { background: #161616; }
+
+/* ---- SIMULATION PAUSED: drawn as a normal notification drop-down (.notify .n-decision), pinned at the top centre.
+   It persists: × hides it for a moment and app.js drops it back down while the simulation is still paused. ---- */
+.notify.paused-note { position: fixed; top: 16px; left: 50%; z-index: 60; width: min(560px, 90vw);
+  transform: translate(-50%, calc(-100% - 24px)); visibility: hidden; pointer-events: none;
+  transition: transform .22s ease-out, visibility 0s linear .22s; }
+.notify.paused-note.show { transform: translate(-50%, 0); visibility: visible; pointer-events: auto; transition: transform .22s ease-out, visibility 0s; }
+
+/* ---- Classic notifications: the original solid-colour drop-downs (no card + side stripe) ---- */
+:root[data-theme='classic'] .notify { border: 0; border-radius: 4px; color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+:root[data-theme='classic'] .n-system { background: #ee7ab6; }
+:root[data-theme='classic'] .n-success { background: #3fae6a; }
+:root[data-theme='classic'] .n-warn { background: #e8892b; }
+:root[data-theme='classic'] .n-error { background: #b91c1c; }
+:root[data-theme='classic'] .n-decision { background: #e2b33c; color: #1b1b1b; }
+:root[data-theme='classic'] .n-close { color: inherit; }
+:root[data-theme='classic'] .n-bar { background: rgba(0,0,0,.15); }
+:root[data-theme='classic'] .n-bar > div { background: rgba(0,0,0,.55); }
+:root[data-theme='classic'] .notify-pill, :root[data-theme='classic'] .pill.warn { background: #e2b33c; color: #1b1b1b; border: 0; }
+
+/* ---- Every theme: every button 25 px tall. Classic only: solid colours, and the ASK/ACT switch solid orange (ASK) or green (ACT) ---- */
+:root:root .btn, :root:root .btn.lg, :root:root .fl-btn, :root:root .fl-btn--lg,
+:root:root .notify .btn, :root:root .llm-row .btn, :root:root .chat-form .btn,
+:root:root .seg button, :root:root .oversight .seg button, :root:root .chat-toggle,
+:root:root .authsw { height: 25px; min-height: 25px; padding-top: 0; padding-bottom: 0; line-height: 25px; }
+:root:root .fl-btn { line-height: 1; }
+:root[data-theme='classic'] .authsw { border: 0; border-radius: 4px; background: #3a3a3a; }
+:root[data-theme='classic'] .authsw span { color: #aaaaaa; box-shadow: none; }
+:root[data-theme='classic'] .authsw.is-ask .ask { background: #e8892b; color: #071a26; box-shadow: none; }
+:root[data-theme='classic'] .authsw.is-act .act { background: #3fae6a; color: #071a26; box-shadow: none; }
+:root[data-theme='classic'] .seg, :root[data-theme='classic'] .oversight .seg { border: 0; border-radius: 4px; }
+:root[data-theme='classic'] .seg button, :root[data-theme='classic'] .oversight .seg button { background: #3a3a3a; color: #aaaaaa; box-shadow: none; border: 0; }
+:root[data-theme='classic'] .seg button.on, :root[data-theme='classic'] .oversight .seg button.on { background: #1d4ed8; color: #fff; box-shadow: none; }
+:root[data-theme='classic'] .oversight .seg button.on.red { background: #b91c1c; }
+:root[data-theme='classic'] .chat-toggle { border: 0; border-radius: 4px; background: #1d4ed8; color: #fff; font-weight: 700; padding: 0 14px; }
+
+/* ---- Warden Control: every button's text is the same size (every theme) ---- */
+:root:root .wc button, :root:root .wc .btn, :root:root .wc .btn.lg, :root:root .wc .fl-btn, :root:root .wc .seg button,
+:root:root .wc .hold-btn, :root:root .wc .hold-btn .cap, :root:root .wc .hold-btn .sub, :root:root .wc .agent-tile { font-size: 13px; }
+
+/* ---- Governance Pipeline: description and hover explanations for each stage ---- */
+.pipe-about { font-size: 12.5px; color: var(--fl-muted-foreground); line-height: 1.45; margin: 2px 0 8px; }
+.stepper .step { position: relative; cursor: help; border-radius: var(--fl-radius-control); }
+.stepper .step:focus-visible { outline: 2px solid var(--fl-brass); outline-offset: 2px; }
+.step-tip { display: none; position: absolute; top: calc(100% + 6px); z-index: 30; width: 260px; padding: 10px 12px; text-align: left;
+  background: var(--fl-popover); color: var(--fl-foreground); border: 1px solid var(--fl-border-strong); border-radius: var(--fl-radius-control);
+  box-shadow: var(--fl-shadow); font-size: 12.5px; font-weight: 400; line-height: 1.45; white-space: normal; }
+.step-tip.tip-left { left: 0; } .step-tip.tip-right { right: 0; }
+.step-tip b { display: block; font-size: 13px; margin-bottom: 2px; }
+.step-tip .tip-st { display: block; font-weight: 600; margin-bottom: 4px; }
+.step-tip .tip-st.s-pass { color: var(--fl-success); } .step-tip .tip-st.s-fail { color: var(--fl-danger); }
+.step-tip .tip-st.s-skip { color: var(--fl-muted-foreground); } .step-tip .tip-st.s-pending { color: var(--fl-warning); }
+.stepper .step:hover .step-tip, .stepper .step:focus .step-tip { display: block; }
+
+/* ---- clickable conflict cards (open the conflict drawer) ---- */
+.card.clickable { cursor: pointer; }
+.card.clickable:hover { background: var(--fl-muted); }
+.card.clickable:focus-visible { outline: 2px solid var(--fl-brass); outline-offset: 2px; }
+.card.clickable.selected { border-color: var(--fl-accent); box-shadow: inset 0 0 0 1px var(--fl-accent); }
