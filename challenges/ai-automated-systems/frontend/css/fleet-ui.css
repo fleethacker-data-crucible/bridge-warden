@@ -203,7 +203,7 @@ input[type='text'], input:not([type]), input[type='search'], input[type='passwor
 .w-row .tm { font: 600 13px var(--fl-font-mono); color: var(--fl-warning); text-align: right; white-space: nowrap; }
 .w-empty { border: 1px dashed var(--fl-border-strong); border-radius: var(--fl-radius-card); padding: 18px; text-align: center; color: var(--fl-muted-foreground); }
 .w-ledger { font: 12px/1.7 var(--fl-font-mono); background: var(--fl-sidebar); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); padding: 8px 12px; max-height: 220px; overflow: auto; }
-.w-ledger .ln { display: grid; grid-template-columns: 70px 96px minmax(0, 1fr); gap: 10px; }
+.w-ledger .ln { display: grid; grid-template-columns: 48px 150px minmax(0, 1fr); gap: 10px; }
 .w-ledger .t { color: var(--fl-muted-foreground); }
 .watch-detail { position: sticky; top: 0; background: var(--fl-card); border: 1px solid var(--fl-border); border-radius: var(--fl-radius-card); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .watch-detail h3 { margin: 0; font: 700 18px/1.25 var(--fl-font-display); }
@@ -252,3 +252,28 @@ input[type='text'], input:not([type]), input[type='search'], input[type='passwor
 .notify .btn.success, .n-actions .btn.success { background: var(--fl-success); color: var(--fl-background); border-color: transparent; font-weight: 700; }
 .notify .btn.danger, .n-actions .btn.danger { background: var(--fl-danger); color: var(--fl-background); }
 .notify .btn { height: 34px; }
+
+
+/* ---- Match the other Fleet apps (Halyard, Fairlead): quiet status, one accent action -------------------------
+   Affirmative actions are the solid accent. Everything else is an outlined button. Destructive controls are a dark
+   button with coral text and a thin coral border, as in Halyard's "Delete run". Status is a small tinted pill with a word. */
+.btn.success, .decision .btn.success.lg, .watch-detail .btn.success.lg, .notify .btn.success, .n-actions .btn.success, .fl-btn--success {
+  background: var(--fl-accent); color: var(--fl-accent-ink); border: 1px solid transparent; font-weight: 600; }
+.btn.success:hover, .decision .btn.success.lg:hover, .fl-btn--success:hover { background: var(--fl-accent); filter: brightness(1.1); }
+.btn.danger, .notify .btn.danger, .n-actions .btn.danger, .fl-btn--danger {
+  background: var(--fl-card); color: var(--fl-danger); border: 1px solid rgb(239 106 90 / .45); font-weight: 600; }
+.btn.danger:hover, .fl-btn--danger:hover { background: rgb(239 106 90 / .14); border-color: var(--fl-danger); filter: none; }
+.fl-stop { border-width: 1px; }
+.hold-btn.red { background: var(--fl-card); color: var(--fl-danger); border: 2px solid var(--fl-danger); }
+.hold-btn.red .fill { background: rgb(239 106 90 / .3); }
+.hold-btn.green { background: var(--fl-accent); color: var(--fl-accent-ink); border: 2px solid transparent; }
+.hold-btn .sub { color: inherit; opacity: .85; }
+.badge { border: 0; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12px; padding: 0 10px; }
+.badge::first-letter { text-transform: uppercase; }
+.fl-sim { border: 0; background: rgb(224 164 67 / .16); }
+.fl-chip, .chip { border: 0; }
+.w-row .t .badge { text-transform: none; }
+.notify-pill, .pill.warn { border: 0; }
+/* the agent state chips in Warden Control stay square tiles, but quiet: a word-sized tint, not a loud outline */
+.agent-tile { border-width: 1px; }
+:root[data-theme='light'] .btn.danger, :root[data-theme='light'] .fl-btn--danger { background: #fff; color: var(--fl-danger); border-color: var(--fl-danger); }
