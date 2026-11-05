@@ -6,7 +6,7 @@ Instructions for any AI agent or model working in this repo. This is the only in
 
 **This rule applies to every AI agent and every contributor, including people who are not developers.**
 
-- Bridge Warden uses the shared Fleet UI, `challenges/ai-automated-systems/frontend/vendor/fleet/fleet.css`, copied unchanged from the other Fleet tools. Do not edit that file by hand; change it in the Fleet repos and copy it here.
+- Bridge Warden uses the shared Fleet UI, `frontend/vendor/fleet/fleet.css`, copied unchanged from the other Fleet tools. Do not edit that file by hand; change it in the Fleet repos and copy it here.
 - The Fleet look (Night watch, with the emblem, sidebar, header and status bar) is the DEFAULT when the app opens. `js/theme.js` sets it. Nobody should have to find a setting. Appearance in Settings offers Chart room and Follow the system.
 - New screens use the Fleet shell and the `--fl-*` tokens and `.fl-*` components. No new raw colors, fonts or radii in components. `docs/design/style-guide.md` stays the reference for the dense operator-console layout and for notifications and decision handling.
 - Status is never colour alone: always colour plus a word, and an icon where it helps. Every control works from the keyboard.
@@ -27,15 +27,17 @@ Team **Data Crucible** at the **FLEETHACKER** hackathon. Each fact lives in one 
 | `docs/design/style-guide.md` | All UI: colors, type, layout, components |
 
 ## Repo layout
+This repo is the single challenge, at the root (the layout `templates/challenge/` describes).
 ```
-docs/                          global event docs (above)
-tools/api-console/             local UI for testing any API
-tools/creds/pull-creds.ps1     pulls vault keys into the root .env
-templates/challenge/           copy this to start every new challenge
-challenges/<challenge-name>/   folder name = official challenge name, lowercase, spaces → hyphens
-  challenge.md                 official challenge text, verbatim (category recorded inside)
-  README.md                    our project name, one-line pitch, how to run it
-  docs/                        required project docs (below)
+README.md                      our project name, one-line pitch, how to run it
+challenge.md                   official challenge text, verbatim (category recorded inside)
+docs/                          global event docs (above) plus this project's required docs (below)
+backend/                       config/, scenarios/, fixtures/, skills/, eval/; `.env` (gitignored, from `.env.example`) holds
+                               the model settings. Keys are set there by hand, or Bridge Warden reads the key Fairlead
+                               installed in Windows Credential Manager (`Fairlead/BridgeWarden`); see README.md
+frontend/                      the UI (index.html, control.html, js/, css/, vendor/fleet/)
+src/                           the C# engine (src/src/*.cs) and the PowerShell host (Build.ps1, Start-BridgeWarden.ps1, tools/)
+templates/challenge/           the challenge template this repo was started from
 ```
 
 ## How to build
@@ -48,11 +50,11 @@ challenges/<challenge-name>/   folder name = official challenge name, lowercase,
 7. **Unclassified only.** No CUI, PII or nonpublic government data.
 8. **Show human authority in AI features.** Approval points, prohibited actions, monitoring, escalation, stop, audit log.
 9. **UI follows the style guide exactly.**
-10. **Stay in the project folder you were given.** Change `docs/`, `tools/` or root files only when asked.
+10. **Stay in the project folder you were given.** Change `docs/` or root files only when asked.
 11. **Steer back.** If the work drifts from these rules, say so.
 
 ## Every challenge is structured the same
-- **New challenge:** copy `templates/challenge/` to `challenges/<challenge-name>/`, paste the official text into `challenge.md`, then fill in the docs.
+- **New challenge:** `templates/challenge/` is the template. This repo is the single challenge, at the root, started from it. For another challenge, copy the template into its own repo, paste the official text into `challenge.md`, then fill in the docs.
 - **`docs/plan.md` keeps the template's 16 sections, in order, with the same names.** Write "N/A: <reason>" rather than deleting a section.
 - **Required project docs** are the files in `templates/challenge/docs/`. Each project keeps all of them and updates them as work happens, not at the end.
 - **Challenge Coverage (plan section 3)** must map every question and capability in `challenge.md`. Re-check it whenever the plan changes.
