@@ -3,7 +3,7 @@
 const $ = (id) => document.getElementById(id);
 // Which notifications each COP shows. Other pages show everything.
 const PAGE_DOMAIN = { overview: 'nav', systems: 'systems', dc: 'dc' };
-const ui = { page: 'overview', agent: null, intent: null, ledger: null, explain: {} };
+const ui = { page: 'watch', agent: null, intent: null, ledger: null, explain: {} };
 // Streams the explanation (Server-Sent Events) and shows each chunk as it arrives.
 async function explainIntent(id) {
     const x = ui.explain[id] = { story: '', thoughts: '', thinking: true, open: false };
@@ -74,6 +74,7 @@ function renderShell(s) {
     $('n-esc').innerHTML = sum.escalations_open ? badge(sum.escalations_open, 'yellow') : '';
     $('banner').classList.toggle('show', sum.safe_stop);
     $('paused').classList.toggle('show', !s.server.running);
+    if (typeof renderStatus === 'function') renderStatus(s);
 }
 
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => {
@@ -82,7 +83,9 @@ document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', 
         if (x === n) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
     });
     // Keyboard focus stays on the button; the live region tells screen readers which page opened.
-    $('page-status').textContent = `${[...n.childNodes].filter(c => c.nodeType === 3).map(c => c.textContent).join('')} page`;
+    const nm = (n.querySelector('.nm') || n).textContent.trim();
+    $('page-status').textContent = `${nm} page`;
+    $('page-title').textContent = nm;
     ui.page = n.dataset.page;
     Notify.setScope(PAGE_DOMAIN[ui.page] || null);
     if (PAGE_DOMAIN[ui.page]) BW.api('POST', `/api/view/${PAGE_DOMAIN[ui.page]}`).catch(() => {});   // tells the server which COP is on screen (all COPs keep running)
@@ -102,7 +105,7 @@ function setHtml(el, html) {
 function render(s) {
     if (!s || pointerDown || ui.dragging) return;   // never rebuild the page under a drag (Agents roster re-rank)
     renderShell(s);
-    const pages = { overview: pageOverview, systems: pageSystems, dc: pageDC, agents: pageAgents, intents: pageIntents,
+    const pages = { watch: pageWatch, settings: pageSettings, overview: pageOverview, systems: pageSystems, dc: pageDC, agents: pageAgents, intents: pageIntents,
         conflicts: pageConflicts, escalations: pageEscalations, ledger: pageLedger };
     $('content').classList.toggle('nav-full', ['overview', 'systems', 'dc'].includes(ui.page));
     renderSide(s);
@@ -237,6 +240,7 @@ const SIDE = { overview: ['Navigation', '20 nm picture · what the agents see', 
     dc: ['Damage Control', 'Compartments and response teams', 'dc'] };
 function renderSide(s) {
     const p = SIDE[ui.page];
+    if (!p) { setHtml($('side-extra'), ''); return; }
     setHtml($('side-extra'), (p ? `<div><div class="page-title">${p[0]}</div><div class="muted">${p[1]}</div></div>
            <div>${agentPanel(s, p[2])}</div>` : '') +
         `<div>${trainingPanel(s)}</div>` + (p ? `<div>${activityFeed(s, p[2])}</div>` : ''));

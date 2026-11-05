@@ -2,6 +2,17 @@
 
 Instructions for any AI agent or model working in this repo. This is the only instruction file. `CLAUDE.md`, `GEMINI.md` and `.github/copilot-instructions.md` just point here. Chat-only models (ChatGPT, Grok in a browser) can't see the repo, so paste this file in at the start of a session.
 
+## Fleet UI is mandatory (do not change)
+
+**This rule applies to every AI agent and every contributor, including people who are not developers.**
+
+- Bridge Warden uses the shared Fleet UI, `challenges/ai-automated-systems/frontend/vendor/fleet/fleet.css`, copied unchanged from the other Fleet tools. Do not edit that file by hand; change it in the Fleet repos and copy it here.
+- The Fleet look (Night watch, with the emblem, sidebar, header and status bar) is the DEFAULT when the app opens. `js/theme.js` sets it. Nobody should have to find a setting. Appearance in Settings offers Chart room and Follow the system.
+- New screens use the Fleet shell and the `--fl-*` tokens and `.fl-*` components. No new raw colors, fonts or radii in components. `docs/design/style-guide.md` stays the reference for the dense operator-console layout and for notifications and decision handling.
+- Status is never colour alone: always colour plus a word, and an icon where it helps. Every control works from the keyboard.
+- Any change to a screen needs the UI Lead's UI/508 pass before it merges.
+- If a change would break a Fleet UI rule, STOP and ask Anthony (sun-of-anton). Do not work around it. Only he may change or remove this rule.
+
 ## Context
 Team **Data Crucible** at the **FLEETHACKER** hackathon. Each fact lives in one doc; this file points to it.
 

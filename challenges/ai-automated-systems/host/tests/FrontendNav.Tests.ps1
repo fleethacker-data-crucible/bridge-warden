@@ -13,9 +13,9 @@ BeforeAll {
 }
 
 Describe 'Primary navigation (BRIDGE-WARDEN-01)' {
-    It 'is a labelled nav landmark with eight destinations' {
+    It 'is a labelled nav landmark with ten destinations' {
         $script:NavHtml | Should -Match '^<nav\b[^>]*aria-label="[^"]+"'
-        $script:NavItems.Count | Should -Be 8
+        $script:NavItems.Count | Should -Be 10
     }
 
     It 'uses native buttons, never div or span, for every destination' {

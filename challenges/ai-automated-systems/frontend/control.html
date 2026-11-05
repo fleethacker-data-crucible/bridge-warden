@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-app="bridge-warden">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Warden Control</title>
 <link rel="icon" href="img/favicon-32.png">
-<script src="js/skin.js"></script>
+<script src="js/theme.js"></script>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/styles.css">
-<link rel="stylesheet" href="css/kit-skin.css">
-<link rel="stylesheet" href="css/fleet-skin.css">
+<link rel="stylesheet" href="vendor/fleet/fleet.css">
+<link rel="stylesheet" href="css/fleet-ui.css">
 <link rel="stylesheet" href="css/welcome.css">
 <script src="js/welcome.js" defer></script>
 </head>
@@ -18,7 +18,7 @@
 <header class="header">
   <div class="logo control">BW</div>
   <div>
-    <div class="title">Warden Control <span class="badge b-green badge-unclass">Unclassified</span></div>
+    <div class="title">Warden Control <span class="badge b-green badge-unclass">Unclassified</span> <span class="badge b-yellow">Simulation</span></div>
     <div class="subtitle" id="sub">Connecting…</div>
   </div>
   <div class="kpis">
@@ -59,11 +59,11 @@
 
     <div class="label blue">Governance Actions</div>
     <div class="grid2">
-      <button class="btn primary" data-act="verify">Verify Ledger</button>
-      <button class="btn primary" data-act="rollback">Rollback Last</button>
+      <button class="btn" data-act="verify">Verify Ledger</button>
+      <button class="btn" data-act="rollback">Rollback Last</button>
       <button class="btn danger" id="gq" title="Sound General Quarters">Sound GQ</button>
-      <button class="btn primary" data-inject="system-check" title="System Check Now">Sys Check</button>
-      <button class="btn primary" data-act="main">Open Main App</button>
+      <button class="btn" data-inject="system-check" title="System Check Now">Sys Check</button>
+      <button class="btn" data-act="main">Open Main App</button>
     </div>
 
     <div class="label blue">Presenter</div>
@@ -78,7 +78,7 @@
 
     <div class="label orange">Scenario Actions</div>
     <div class="grid2">
-      <button class="btn warn" data-act="start">Start Operations</button>
+      <button class="btn primary" data-act="start">Start Operations</button>
       <button class="btn warn" data-act="pause">Pause</button>
     </div>
     <button class="btn warn lg inject-all" id="inject-open">Inject Issues…</button>
