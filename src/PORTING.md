@@ -1,15 +1,15 @@
-# Porting warden/*.py to C# (host/src)
+# Porting warden/*.py to C# (src/src)
 
-Rules for every file in `host/src`. The port is finished and the Python is gone from this branch; the original `backend/warden/*.py` (the spec it was ported from) is in git history on `master`. These rules still apply to every change to the C# host.
+Rules for every file in `src/src`. The port is finished and the Python is gone from this branch; the original `backend/warden/*.py` (the spec it was ported from) is in git history on `master`. These rules still apply to every change to the C# host.
 
 ## Compiler and runtime
 - **C# 5 only.** The compiler is the one built into Windows (.NET Framework `csc` via `Add-Type`). Not allowed: `$"..."` interpolation, `?.` / `?[]`, `nameof`, expression-bodied members (`=>` on methods/properties), auto-property initializers, `out var`, tuples / `ValueTuple`, `is` patterns, local functions, `default` literal, `throw` expressions. Use `string.Format`/concatenation, explicit null checks, full method bodies, `out` params or small classes. Lambdas `x => ...` and `delegate { }` are fine. `async`/`await` work but prefer threads + `.Wait()`.
 - **References: `System.dll` and `System.Core.dll` only.** No `System.Web.Extensions`, no `System.Data`, no NuGet, no third-party DLLs.
 - **One namespace:** `BridgeWarden`. One file per Python module (e.g. `world.py` -> `World.cs`).
 - **ASCII only** in every `.cs` file (comments too). CRLF line endings. Use `(char)0x2028`-style for non-ASCII code points.
-- **Source rules** (`host/Build.ps1`): no `System.Net`, `WebRequest`, `HttpClient`, sockets, `Dns.`, `Process.Start`, `Assembly.Load`, `LoadLibrary`, `DllImport`, or `https://` in code, except: `WebServer.cs` (HttpListener), `LlmClient.cs` (outbound model calls), `Ledger.cs` (`DllImport("winsqlite3.dll")` only).
+- **Source rules** (`src/Build.ps1`): no `System.Net`, `WebRequest`, `HttpClient`, sockets, `Dns.`, `Process.Start`, `Assembly.Load`, `LoadLibrary`, `DllImport`, or `https://` in code, except: `WebServer.cs` (HttpListener), `LlmClient.cs` (outbound model calls), `Ledger.cs` (`DllImport("winsqlite3.dll")` only).
 - **Compile check your files** (separate process, nothing else breaks):
-  `powershell -NoProfile -ExecutionPolicy Bypass -File host\tools\Test-Compile.ps1 Json.cs Py.cs Models.cs Paths.cs <your files...>`
+  `powershell -NoProfile -ExecutionPolicy Bypass -File src\tools\Test-Compile.ps1 Json.cs Py.cs Models.cs Paths.cs <your files...>`
   The whole set: `... Test-Compile.ps1 -All`.
 
 ## Foundation (don't change these; put extra helpers in your own file)

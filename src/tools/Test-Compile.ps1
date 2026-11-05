@@ -1,8 +1,8 @@
 # Compile-checks a set of C# files with the host's rules and compiler settings, in a separate process, so files still
 # being ported never break anyone else. Windows PowerShell 5.1. ASCII only.
-#   powershell -NoProfile -ExecutionPolicy Bypass -File host\tools\Test-Compile.ps1 Json.cs Py.cs Models.cs World.cs
-#   powershell -NoProfile -ExecutionPolicy Bypass -File host\tools\Test-Compile.ps1 -All
-# Names are files in host\src. Prints "OK" or every rule failure / compiler error with file and line; exit 0 / 1.
+#   powershell -NoProfile -ExecutionPolicy Bypass -File src\tools\Test-Compile.ps1 Json.cs Py.cs Models.cs World.cs
+#   powershell -NoProfile -ExecutionPolicy Bypass -File src\tools\Test-Compile.ps1 -All
+# Names are files in src\src. Prints "OK" or every rule failure / compiler error with file and line; exit 0 / 1.
 param([switch]$All, [Parameter(ValueFromRemainingArguments = $true)][string[]]$Files)
 $ErrorActionPreference = 'Stop'
 $hostDir = Split-Path -Parent $PSScriptRoot

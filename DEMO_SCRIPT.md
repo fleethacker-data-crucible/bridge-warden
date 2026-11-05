@@ -51,7 +51,7 @@ Each beat answers one challenge question (see `OVERVIEW.html`). **Do** = click, 
 *Q: How can operators pause, override, constrain or roll back?*
 **Do:** Pause one agent from its tile. Then hold **SAFE-STOP** for 2 s.
 **See:** Every agent halts and the ship drops to safe speed. Hold it again to resume.
-**Say:** "Operators can pause a single agent or stop every AI aboard with one gesture. A system check also makes the operator confirm every two minutes, or the system stops itself."
+**Say:** "Operators can pause a single agent or stop every AI aboard with one gesture. The operator can also run a system check on demand with the Sys Check button; a periodic check that must be confirmed every two minutes, or the system stops itself, can be turned on in policies.json."
 
 ## 6:00 Audit (30 s)
 **Do:** **Verify Ledger**.
