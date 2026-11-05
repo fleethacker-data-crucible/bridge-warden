@@ -62,15 +62,24 @@ if ($fleet.Note) { Add-Log 'port' $fleet.Note }
 
 function Open-Windows([int]$p) {
     if ($NoBrowser) { return }
+    # Browser: Firefox when it is installed (set BRIDGEWARDEN_BROWSER=chrome, edge or default to choose another),
+    # else Chrome, else Edge, else the system default. Firefox has no app mode, so it gets two plain new windows.
+    $pick = ([string]$env:BRIDGEWARDEN_BROWSER).ToLowerInvariant()
+    $firefox = @("$env:ProgramFiles\Mozilla Firefox\firefox.exe", "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
     $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
                 "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
                 "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
                 "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
                 "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+    $useFirefox = $firefox -and ($pick -eq '' -or $pick -eq 'firefox')
+    if ($pick -eq 'default') { $useFirefox = $false; $chrome = $null }
     $profileDir = Join-Path $env:LOCALAPPDATA 'BridgeWarden\browser-app'
     foreach ($w in @(@{ page = 'control.html'; pos = '0,0' }, @{ page = 'index.html'; pos = '120,60' })) {
         $url = "http://127.0.0.1:$p/$($w.page)"
-        if ($chrome) {
+        if ($useFirefox) {
+            Start-Process $firefox "-new-window `"$url`""
+            Start-Sleep -Milliseconds 900
+        } elseif ($chrome) {
             Start-Process $chrome "--user-data-dir=`"$profileDir`" --no-first-run --new-window --app=$url --window-size=1500,950 --window-position=$($w.pos)"
             Start-Sleep -Milliseconds 600
         } else { Start-Process $url }
