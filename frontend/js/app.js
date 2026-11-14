@@ -56,14 +56,14 @@ function renderShell(s) {
     $('chat-model').textContent = `${viaFairlead ? 'AI model' + viaFairlead : 'local model'} · proposes, never acts`;
     $('k-sim').textContent = fmtSim(s.cop.sim_time);
     const sp = (s.presenter && s.presenter.speed) || 1;
-    $('k-speed').innerHTML = `<button class="btn ${sp > 1 ? 'warn' : ''}" style="height:24px;min-width:56px" title="Sim speed: click for ${sp % 5 + 1}x" onclick="BW.act('POST','/api/presenter/speed',null,'Sim speed ${sp % 5 + 1}x')">${sp}x</button>`;
+    setHtml($('k-speed'), `<button class="btn ${sp > 1 ? 'warn' : ''}" style="height:24px;min-width:56px" title="Sim speed: click for ${sp % 5 + 1}x" onclick="BW.act('POST','/api/presenter/speed',null,'Sim speed ${sp % 5 + 1}x')">${sp}x</button>`);
     const gq = s.cop.systems.gq;
-    $('k-gq').innerHTML = `<button class="btn ${gq ? '' : 'danger'}" style="height:24px" onclick="BW.act('POST','/api/control/gq/${gq ? 'off' : 'on'}')">${gq ? 'GQ · Secure' : 'Sound GQ'}</button>`;
+    setHtml($('k-gq'), `<button class="btn ${gq ? '' : 'danger'}" style="height:24px" onclick="BW.act('POST','/api/control/gq/${gq ? 'off' : 'on'}')">${gq ? 'GQ · Secure' : 'Sound GQ'}</button>`);
     // One toggle; the label is the mode in force. Click switches to the other.
     // One toggle for every agent: ASK (gold) = agents ask the watch first; ACT (green) = agents may act. Click flips it.
     const act = s.auto_act;
-    $('k-auth').innerHTML = `<button class="authsw ${act ? 'is-act' : 'is-ask'}" title="All agents: click to switch to ${act ? 'ASK first' : 'ACT on their own'}"
-        onclick="BW.act('POST','/api/control/auto-act/${act ? 'off' : 'on'}',null,'All agents: ${act ? 'ASK first' : 'ACT'}')"><span class="ask">ASK</span><span class="act">ACT</span></button>`;
+    setHtml($('k-auth'), `<button class="authsw ${act ? 'is-act' : 'is-ask'}" title="All agents: click to switch to ${act ? 'ASK first' : 'ACT on their own'}"
+        onclick="BW.act('POST','/api/control/auto-act/${act ? 'off' : 'on'}',null,'All agents: ${act ? 'ASK first' : 'ACT'}')"><span class="ask">ASK</span><span class="act">ACT</span></button>`);
     $('k-agents').textContent = `${sum.agents_active}/${sum.agents_total}`;
     $('k-ipm').textContent = sum.intents_per_min;
     $('k-cf').textContent = sum.conflicts_total;
@@ -71,7 +71,7 @@ function renderShell(s) {
     $('n-agents').textContent = sum.agents_total;
     $('n-intents').textContent = sum.submitted;
     $('n-conflicts').textContent = sum.conflicts_total || '';
-    $('n-esc').innerHTML = sum.escalations_open ? badge(sum.escalations_open, 'yellow') : '';
+    setHtml($('n-esc'), sum.escalations_open ? badge(sum.escalations_open, 'yellow') : '');
     $('banner').classList.toggle('show', sum.safe_stop);
     pausedNote(!s.server.running);
     if (typeof renderStatus === 'function') renderStatus(s);
@@ -115,19 +115,176 @@ document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', 
     if (ui.page === 'ledger') loadLedger();
 }));
 
-// Only touch the DOM when the markup changed, and never mid-click, so live updates can't eat an operator's click.
-let pointerDown = false;
+// Only touch the DOM when the markup changed, and never mid-click or mid-key, so a live tick cannot eat an
+// operator's activation. Enter/Space get the same pause as the pointer: the click is the key's default action,
+// and a swap before it runs drops the focused control.
+let pointerDown = false, keyHeld = false;
 document.addEventListener('pointerdown', () => { pointerDown = true; });
 document.addEventListener('pointerup', () => { pointerDown = false; setTimeout(() => render(BW.state), 0); });
 // A native drag (Agents roster re-rank) ends the pointer with pointercancel, never pointerup: clear the flag there too,
 // or the page stops re-rendering after the first drag and the new rank order never shows.
 document.addEventListener('pointercancel', () => { pointerDown = false; });
+function activationKey(e) { return e.key === 'Enter' || e.key === ' '; }
+function inLiveHost(node) {
+    return !!(node && node.closest && node.closest('#content, #drawer, #side-extra, #k-auth, #k-gq, #k-speed'));
+}
+document.addEventListener('keydown', (e) => {
+    if (e.repeat || !activationKey(e)) return;
+    const t = e.target;
+    if (!t || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return;
+    if (inLiveHost(t)) keyHeld = true;
+});
+function releaseKeyHold() {
+    if (!keyHeld) return;
+    keyHeld = false;
+    setTimeout(() => render(BW.state), 0);
+}
+document.addEventListener('keyup', (e) => { if (activationKey(e)) releaseKeyHold(); });
+window.addEventListener('blur', releaseKeyHold);
+
+// Identity of a node that survives an innerHTML swap: the action it runs, not its place on screen.
+// A countdown tick rewrites the card, and a new escalation can be inserted above the one under review.
+const FOCUS_ATTRS = ['id', 'onclick', 'onkeydown', 'ontoggle', 'aria-describedby', 'aria-labelledby', 'href', 'name', 'type', 'role'];
+function focusDescriptor(el) {
+    const parts = [el.tagName];
+    for (let i = 0; i < FOCUS_ATTRS.length; i++) {
+        const v = el.getAttribute(FOCUS_ATTRS[i]);
+        if (v) parts.push(FOCUS_ATTRS[i] + '=' + v);
+    }
+    const attrs = el.attributes;
+    for (let i = 0; i < attrs.length; i++) {
+        const a = attrs[i];
+        if (a.name.slice(0, 5) === 'data-') parts.push(a.name + '=' + a.value);
+    }
+    if (parts.length === 1 && el.children.length === 0) {
+        const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (t) parts.push('text=' + t.slice(0, 120));
+    }
+    // A <details> has no action of its own. Tie it to the decision button in the same card so opening
+    // "More detail" stays on that escalation when the list is redrawn.
+    if (el.tagName === 'DETAILS' && !el.getAttribute('onclick') && !el.getAttribute('ontoggle')) {
+        const marker = cardMarker(el);
+        if (marker) parts.push('card=' + marker);
+    }
+    return parts.join('|');
+}
+function firstControl(el) {
+    const kids = el.children;
+    for (let i = 0; i < kids.length; i++) {
+        if (kids[i].getAttribute('onclick') || kids[i].getAttribute('data-agent')) return kids[i];
+        const inner = firstControl(kids[i]);
+        if (inner) return inner;
+    }
+    return null;
+}
+function cardMarker(el) {
+    let scope = el.parentElement;
+    for (let hop = 0; scope && hop < 6; hop++, scope = scope.parentElement) {
+        const hit = firstControl(scope);
+        if (hit && !el.contains(hit)) return hit.getAttribute('onclick') || hit.getAttribute('data-agent') || '';
+    }
+    return '';
+}
+function focusAll(root, descriptor) {
+    const out = [];
+    const walk = (node) => {
+        const kids = node.children;
+        for (let i = 0; i < kids.length; i++) {
+            if (focusDescriptor(kids[i]) === descriptor) out.push(kids[i]);
+            walk(kids[i]);
+        }
+    };
+    walk(root);
+    return out;
+}
+function focusPath(root, node) {
+    const steps = [];
+    let n = node;
+    while (n && n !== root) {
+        const parent = n.parentElement;
+        if (!parent) return null;
+        const d = focusDescriptor(n);
+        const sibs = parent.children;
+        let index = 0;
+        for (let i = 0; i < sibs.length; i++) {
+            if (sibs[i] === n) break;
+            if (focusDescriptor(sibs[i]) === d) index++;
+        }
+        steps.push({ d: d, i: index });
+        n = parent;
+    }
+    return n === root ? steps.reverse() : null;
+}
+function focusFind(root, steps) {
+    let n = root;
+    for (let s = 0; s < steps.length; s++) {
+        const step = steps[s], kids = n.children;
+        let match = null, seen = 0;
+        for (let i = 0; i < kids.length; i++) {
+            if (focusDescriptor(kids[i]) !== step.d) continue;
+            if (seen === step.i) { match = kids[i]; break; }
+            seen++;
+        }
+        n = match;
+        if (!n) return null;
+    }
+    return n;
+}
+// Prefer a descriptor that is unique in the whole region (the Approve button's onclick). Fall back to the
+// path from the nearest unique ancestor, so a new row inserted above the review does not steal focus.
+function focusToken(root, node) {
+    if (!node || node === root) return null;
+    const own = focusDescriptor(node);
+    if (focusAll(root, own).length === 1) return { d: own };
+    let n = node.parentElement;
+    while (n && n !== root) {
+        const d = focusDescriptor(n);
+        if (focusAll(root, d).length === 1) return { d: d, path: focusPath(n, node) };
+        n = n.parentElement;
+    }
+    const path = focusPath(root, node);
+    return path ? { path: path } : null;
+}
+function findToken(root, token) {
+    if (!token) return null;
+    if (token.d) {
+        const same = focusAll(root, token.d);
+        if (same.length !== 1) return null;
+        return token.path ? focusFind(same[0], token.path) : same[0];
+    }
+    return focusFind(root, token.path);
+}
+function openDetailTokens(el) {
+    if (!el.querySelectorAll) return [];
+    const all = el.querySelectorAll('details'), out = [];
+    for (let i = 0; i < all.length; i++) {
+        if (!all[i].open) continue;
+        const token = focusToken(el, all[i]);
+        if (token) out.push(token);
+    }
+    return out;
+}
+function restoreFocus(el, token) {
+    const next = findToken(el, token);
+    if (!next || typeof next.focus !== 'function') return;
+    try { next.focus({ preventScroll: true }); } catch (err) { next.focus(); }
+}
 function setHtml(el, html) {
-    if (el._html !== html) { el.innerHTML = html; el._html = html; }
+    if (!el || el._html === html) return;
+    const active = document.activeElement;
+    const focus = active && active !== el && el.contains(active) ? focusToken(el, active) : null;
+    const open = openDetailTokens(el);
+    el.innerHTML = html;
+    el._html = html;
+    for (let i = 0; i < open.length; i++) {
+        const node = findToken(el, open[i]);
+        if (node && node.tagName === 'DETAILS') node.open = true;
+    }
+    restoreFocus(el, focus);
 }
 
 function render(s) {
-    if (!s || pointerDown || ui.dragging) return;   // never rebuild the page under a drag (Agents roster re-rank)
+    if (!s || pointerDown || keyHeld || ui.dragging) return;   // never rebuild under a pointer, a key, or an Agents roster drag
     renderShell(s);
     const pages = { watch: pageWatch, settings: pageSettings, overview: pageOverview, systems: pageSystems, dc: pageDC, agents: pageAgents, intents: pageIntents,
         conflicts: pageConflicts, escalations: pageEscalations, ledger: pageLedger };
