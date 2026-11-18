@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for any AI agent or model working in this repo. This is the only instruction file. `CLAUDE.md`, `GEMINI.md` and `.github/copilot-instructions.md` just point here. Chat-only models (ChatGPT, Grok in a browser) can't see the repo, so paste this file in at the start of a session.
+Instructions for any AI agent or model working in this repo. This is the only instruction file. `GEMINI.md` and `.github/copilot-instructions.md` just point here. Chat-only models (ChatGPT, Grok in a browser) can't see the repo, so paste this file in at the start of a session.
 
 ## Fleet UI is mandatory (do not change)
 
